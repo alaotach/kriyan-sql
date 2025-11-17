@@ -2,6 +2,8 @@ import { Copy, RotateCw, ThumbsUp, ThumbsDown, Trash2 } from 'lucide-react';
 import { Message } from '../types';
 import { Avatar } from './ui/Avatar';
 import { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface ChatMessageProps {
   message: Message;
@@ -49,7 +51,27 @@ export function ChatMessage({ message, onRegenerate, onDelete, onRate }: ChatMes
               : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white rounded-tl-sm'
           }`}
         >
-          <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+          <div className="text-sm whitespace-pre-wrap break-words">
+            <ReactMarkdown 
+              remarkPlugins={[remarkGfm]}
+              components={{
+                // Style for actions: *text*
+                em: ({node, ...props}) => (
+                  <em className="not-italic text-purple-500 dark:text-purple-400" {...props} />
+                ),
+                // Style for bold: **text**
+                strong: ({node, ...props}) => (
+                  <strong className="font-bold" {...props} />
+                ),
+                // Style for paragraphs
+                p: ({node, ...props}) => (
+                  <p className="my-1" {...props} />
+                ),
+              }}
+            >
+              {message.content}
+            </ReactMarkdown>
+          </div>
         </div>
         <span className="text-xs text-neutral-400 mt-1 px-1">
           {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
