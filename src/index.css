@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply transition-colors duration-150;
+  }
+}
+
+@layer utilities {
+  .animate-fadeIn {
+    animation: fadeIn 0.3s ease-in;
+  }
+
+  .animate-slideUp {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  .animate-slideDown {
+    animation: slideDown 0.3s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideUp {
+    from {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideDown {
+    from {
+      transform: translateY(-10px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+}
+
+input[type="range"].slider::-webkit-slider-thumb {
+  @apply appearance-none w-4 h-4 bg-sky-500 rounded-full cursor-pointer;
+}
+
+input[type="range"].slider::-moz-range-thumb {
+  @apply w-4 h-4 bg-sky-500 rounded-full cursor-pointer border-0;
+}
+
+input[type="range"].slider::-webkit-slider-runnable-track {
+  @apply bg-neutral-200 dark:bg-neutral-700 rounded-lg;
+}
+
+input[type="range"].slider::-moz-range-track {
+  @apply bg-neutral-200 dark:bg-neutral-700 rounded-lg;
+}
