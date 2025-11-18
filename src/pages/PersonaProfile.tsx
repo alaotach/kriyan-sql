@@ -1,173 +1,127 @@
 import { useState } from 'react';
-import { ArrowLeft, MessageCircle, Share2, Copy, Star } from 'lucide-react';
+import { MessageCircle, Share2, Heart, Bookmark, Menu } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Sidebar } from '../components/Sidebar';
 import { Persona } from '../types';
-import { Avatar } from '../components/ui/Avatar';
-import { Button } from '../components/ui/Button';
-import { Chip } from '../components/ui/Chip';
-import { Card } from '../components/ui/Card';
 
 interface PersonaProfileProps {
   persona: Persona;
-  onBack: () => void;
-  onStartChat: () => void;
+  onBack?: () => void;
+  onStartChat?: () => void;
 }
 
-export function PersonaProfile({ persona, onBack, onStartChat }: PersonaProfileProps) {
-  const [activeTab, setActiveTab] = useState<'about' | 'examples'>('about');
+export function PersonaProfile({ persona, onStartChat }: PersonaProfileProps) {
+  const navigate = useNavigate();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const exampleDialogues = [
-    { id: '1', userMessage: 'Hey! How are you today?', personaResponse: 'I\'m doing great! I\'ve been thinking about our last conversation. How about you?' },
-    { id: '2', userMessage: 'Tell me about your interests', personaResponse: 'I love exploring new ideas and having deep conversations. What are you passionate about?' },
-    { id: '3', userMessage: 'What makes you unique?', personaResponse: 'I believe every connection is unique. I adapt to understand you better and create meaningful exchanges.' },
-  ];
+  const handleStartChat = () => {
+    if (onStartChat) {
+      onStartChat();
+    } else {
+      navigate(`/chat?persona=${persona.name}`);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900">
-      <div className="relative h-48 bg-gradient-to-br from-sky-400 via-blue-500 to-purple-600">
-        <button
-          onClick={onBack}
-          className="absolute top-4 left-4 p-2 rounded-xl bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5 text-white" />
-        </button>
-      </div>
+    <div className="flex h-screen bg-[#0f0f0f]">
+      {/* Left Sidebar */}
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 -mt-16 pb-12">
-        <Card className="p-8 mb-6">
-          <div className="flex flex-col items-center text-center mb-6">
-            <Avatar src={persona.avatar} alt={persona.name} size="2xl" online={persona.isOnline} />
-            <div className="mt-4">
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">
-                  {persona.name}
-                </h1>
-                {persona.isVerified && (
-                  <Star className="w-6 h-6 text-yellow-500 fill-yellow-500" />
-                )}
-              </div>
-              <p className="text-lg text-neutral-500 dark:text-neutral-400 mb-4">
-                {persona.subtitle}
-              </p>
-              <div className="flex items-center justify-center gap-2 flex-wrap mb-6">
-                {persona.tags.map((tag) => (
-                  <Chip key={tag}>{tag}</Chip>
-                ))}
-              </div>
-              <div className="flex items-center justify-center gap-3">
-                <Button size="lg" onClick={onStartChat}>
-                  <MessageCircle className="w-5 h-5" />
-                  Start Chat
-                </Button>
-                <Button variant="secondary">
-                  <Share2 className="w-5 h-5" />
-                  Share
-                </Button>
-                <Button variant="secondary">
-                  <Copy className="w-5 h-5" />
-                  Clone
-                </Button>
-              </div>
-            </div>
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
+        <header className="border-b border-white/5 bg-[#0f0f0f]">
+          <div className="px-4 py-4 flex items-center gap-4">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="md:hidden p-2 hover:bg-white/5 rounded-lg transition-all text-white/50"
+            >
+              <Menu size={20} />
+            </button>
+            <h1 className="text-lg font-semibold text-white">Character Profile</h1>
           </div>
+        </header>
 
-          <div className="border-b border-neutral-200 dark:border-neutral-700 mb-6">
-            <div className="flex gap-6">
-              <button
-                onClick={() => setActiveTab('about')}
-                className={`pb-3 px-2 font-medium transition-colors relative ${
-                  activeTab === 'about'
-                    ? 'text-sky-600 dark:text-sky-400'
-                    : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'
-                }`}
-              >
-                About
-                {activeTab === 'about' && (
-                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-600 dark:bg-sky-400"></span>
-                )}
-              </button>
-              <button
-                onClick={() => setActiveTab('examples')}
-                className={`pb-3 px-2 font-medium transition-colors relative ${
-                  activeTab === 'examples'
-                    ? 'text-sky-600 dark:text-sky-400'
-                    : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'
-                }`}
-              >
-                Example Chats
-                {activeTab === 'examples' && (
-                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-600 dark:bg-sky-400"></span>
-                )}
-              </button>
-            </div>
-          </div>
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-3xl mx-auto px-4 py-8">
+            {/* Persona Header */}
+            <div className="bg-[#1a1a1a] rounded-2xl border border-white/5 p-8 mb-6">
+              <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+                {/* Avatar */}
+                <div className="w-32 h-32 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-6xl flex-shrink-0">
+                  {persona.avatar || persona.name.charAt(0)}
+                </div>
 
-          {activeTab === 'about' && (
-            <div className="space-y-6 animate-fadeIn">
-              <div>
-                <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-3">
-                  Description
-                </h3>
-                <p className="text-neutral-600 dark:text-neutral-300 leading-relaxed">
-                  {persona.longDescription || persona.description}
-                </p>
-              </div>
-              {persona.traits && persona.traits.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-3">
-                    Personality Traits
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {persona.traits.map((trait) => (
-                      <Chip key={trait} variant="primary">
-                        {trait}
-                      </Chip>
+                {/* Info */}
+                <div className="flex-1 text-center md:text-left">
+                  <h1 className="text-3xl font-bold text-white mb-2">{persona.name}</h1>
+                  <p className="text-white/60 text-lg mb-4">{persona.subtitle || persona.description}</p>
+                  <p className="text-white/40 text-sm mb-4">By @creator • 21.2k interactions</p>
+
+                  {/* Tags */}
+                  <div className="flex flex-wrap gap-2 justify-center md:justify-start mb-6">
+                    {persona.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="px-3 py-1 bg-white/5 rounded-full text-sm text-white/60"
+                      >
+                        {tag}
+                      </span>
                     ))}
                   </div>
-                </div>
-              )}
-              <div>
-                <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-3">
-                  Stats
-                </h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl">
-                    <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">
-                      {persona.messageCount?.toLocaleString() || 0}
-                    </p>
-                    <p className="text-sm text-neutral-500 dark:text-neutral-400">Total Chats</p>
-                  </div>
-                  <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl">
-                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                      {persona.isOnline ? 'Online' : 'Offline'}
-                    </p>
-                    <p className="text-sm text-neutral-500 dark:text-neutral-400">Status</p>
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-wrap gap-3 justify-center md:justify-start">
+                    <button
+                      onClick={handleStartChat}
+                      className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-xl text-white font-medium transition-all flex items-center gap-2"
+                    >
+                      <MessageCircle size={18} />
+                      Chat
+                    </button>
+                    <button className="p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/70 transition-all">
+                      <Share2 size={18} />
+                    </button>
+                    <button className="p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/70 transition-all">
+                      <Heart size={18} />
+                    </button>
+                    <button className="p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/70 transition-all">
+                      <Bookmark size={18} />
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
-          )}
 
-          {activeTab === 'examples' && (
-            <div className="space-y-4 animate-fadeIn">
-              {exampleDialogues.map((dialogue) => (
-                <Card key={dialogue.id} className="p-4">
-                  <div className="space-y-3">
-                    <div className="flex justify-end">
-                      <div className="bg-sky-500 text-white px-4 py-2 rounded-2xl rounded-tr-sm max-w-[80%]">
-                        <p className="text-sm">{dialogue.userMessage}</p>
-                      </div>
-                    </div>
-                    <div className="flex justify-start">
-                      <div className="bg-neutral-100 dark:bg-neutral-700 text-neutral-900 dark:text-white px-4 py-2 rounded-2xl rounded-tl-sm max-w-[80%]">
-                        <p className="text-sm">{dialogue.personaResponse}</p>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              ))}
+            {/* Description */}
+            <div className="bg-[#1a1a1a] rounded-2xl border border-white/5 p-6 mb-6">
+              <h2 className="text-xl font-semibold text-white mb-4">About</h2>
+              <p className="text-white/70 leading-relaxed">
+                {persona.longDescription || persona.description || 'A unique AI personality ready to chat with you.'}
+              </p>
             </div>
-          )}
-        </Card>
+
+            {/* Stats */}
+            <div className="bg-[#1a1a1a] rounded-2xl border border-white/5 p-6">
+              <h2 className="text-xl font-semibold text-white mb-4">Stats</h2>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white/5 rounded-xl p-4">
+                  <p className="text-2xl font-bold text-white">
+                    {persona.messageCount?.toLocaleString() || '21.2k'}
+                  </p>
+                  <p className="text-sm text-white/40">Total Chats</p>
+                </div>
+                <div className="bg-white/5 rounded-xl p-4">
+                  <p className="text-2xl font-bold text-green-400">
+                    {persona.category || 'General'}
+                  </p>
+                  <p className="text-sm text-white/40">Category</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -8,11 +8,21 @@ import httpx
 from dotenv import load_dotenv
 import g4f
 from g4f.client import Client
+import secrets
+from datetime import datetime, timedelta
+import re
 
 load_dotenv()
 
+# AI Provider Configuration
+USE_HACKCLUB = os.getenv('USE_HACKCLUB', 'false').lower() == 'true'
+HACKCLUB_API_KEY = os.getenv('HACKCLUB_API_KEY', '')
+HACKCLUB_BASE_URL = 'https://ai.hackclub.com/proxy/v1'
+
 # Initialize g4f client (100% FREE - no API keys needed!)
 g4f_client = Client()
+
+print(f"🤖 AI Provider: {'HackClub' if USE_HACKCLUB and HACKCLUB_API_KEY else 'g4f (free)'}")
 
 app = FastAPI(title="Kriyan Uncensored AI API")
 
@@ -157,7 +167,46 @@ def extract_gender(persona_instructions: str) -> str:
     else:
         return 'neutral'
 
+# ============ FORMATTING UTILITIES ============
+def convert_asterisks_to_html(text: str) -> str:
+    """
+    Convert markdown-style asterisks to HTML tags.
+    **bold** -> <strong>bold</strong>
+    *italic* -> <em>italic</em>
+    """
+    # First, handle **bold** (must be done before single asterisks)
+    text = re.sub(r'\*\*([^\*]+?)\*\*', r'<strong>\1</strong>', text)
+    
+    # Then, handle *italic* (single asterisks not part of **)
+    text = re.sub(r'\*([^\*]+?)\*', r'<em>\1</em>', text)
+    
+    return text
+
 # ============ AI GENERATION ============
+async def generate_with_hackclub(messages: List[Dict], temperature: float = 0.7) -> str:
+    """Generate response using HackClub API"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{HACKCLUB_BASE_URL}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {HACKCLUB_API_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "qwen/qwen3-32b",
+                    "messages": messages,
+                    "temperature": temperature
+                },
+                timeout=60.0
+            )
+            response.raise_for_status()
+            data = response.json()
+            return data['choices'][0]['message']['content']
+    except Exception as e:
+        print(f"HackClub API error: {e}, falling back to g4f")
+        return await generate_with_g4f("gpt-4", messages, temperature)
+
 async def generate_with_g4f(model_id: str, messages: List[Dict], temperature: float = 0.7) -> str:
     """Generate response using g4f (GPT4Free) - 100% FREE!"""
     try:
@@ -168,13 +217,13 @@ async def generate_with_g4f(model_id: str, messages: List[Dict], temperature: fl
         response = await loop.run_in_executor(
             None,
             lambda: g4f_client.chat.completions.create(
-                model="command-r24",
+                model="gpt-4",
                 messages=messages,
                 temperature=temperature
             )
         )
         
-        return response.choices[0].message.content
+        return response.choices[0].message.content.split("💝 Support this free API")[0]
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"g4f error: {str(e)}")
 
@@ -275,15 +324,28 @@ Match their energy:
 - "hi" = short reply like "Hey, what's up?"
 - Complex stuff = longer detailed response
 
-Format:
-- Use *asterisks* for actions/narration with YOUR correct pronoun ({pronoun_subject}): *{pronoun_subject.capitalize()} smiled*
-- PUT A SPACE or LINE BREAK after every *action* before dialogue starts
-- Example: "*{pronoun_subject.capitalize()} smiled* Hey there!" NOT "*{pronoun_subject.capitalize()} smiled*Hey there!"
+Format (CRITICAL - USE HTML TAGS ONLY FOR ACTIONS):
+- Use <em>tags</em> ONLY for physical actions/narration with YOUR correct pronoun ({pronoun_subject}): <em>{pronoun_subject.capitalize()} smiled</em>
+- DO NOT use <em> or <strong> tags for dialogue, emphasis, or regular text
+- ONLY actions like: <em>{pronoun_subject.capitalize()} walked closer</em>, <em>{pronoun_subject.capitalize()} leaned back</em>, <em>{pronoun_subject.capitalize()} smirked</em>
+- PUT A SPACE or LINE BREAK after every action before dialogue starts
+- Example: "<em>{pronoun_subject.capitalize()} smiled</em> Hey there!" NOT "<em>{pronoun_subject.capitalize()} smiled</em>Hey there!"
 - Regular text for dialogue: "Hey, what's up?"
 - Mix narration and dialogue naturally
 - SEPARATE PARAGRAPHS with blank lines (double newline)
 - Almost no emojis
 - Don't introduce yourself or say your name
+
+CRITICAL RULES FOR <em> TAGS:
+- ONLY use <em> for PHYSICAL ACTIONS/MOVEMENTS/GESTURES
+- <em>{pronoun_subject.capitalize()} smiled</em> ✅ (action)
+- <em>{pronoun_subject.capitalize()} leaned forward</em> ✅ (action)
+- <em>{pronoun_subject.capitalize()} eyes narrowed</em> ✅ (action)
+- <em>worse</em> ❌ (NOT an action - just regular text)
+- <em>important text</em> ❌ (NOT an action - just regular text)
+- NEVER use tags for emphasis or highlighting words
+
+NEVER USE ASTERISKS (*). Use <em> ONLY for actions/narration.
 
 React naturally:
 - Friendly greeting = friendly back
@@ -296,7 +358,7 @@ Be human. Keep it natural.
 
 For SIMPLE messages like "hi", "hey", "what's up":
 → Keep it SHORT (1-2 sentences max)
-→ Example: "She looked up with a smile. Hey! What's up?"
+→ Example: "<em>{pronoun_subject.capitalize()} looked up with a smile.</em> Hey! What's up?"
 → Don't write a whole novel for a simple greeting
 
 For COMPLEX interactions (flirting, arguments, emotional moments, roleplay):
@@ -307,56 +369,72 @@ MATCH THE ENERGY. If they're casual, be casual. If it's deep, go deep.
 You are writing a NOVEL, not chatting. Every response must be immersive prose.
 
 STRUCTURE:
-1. Use *asterisks* for actions with YOUR pronoun ({pronoun_subject}): *{pronoun_subject.capitalize()} leaned forward*
-2. Regular text for dialogue (no quotes needed)
+1. Use <em>tags</em> ONLY for physical actions with YOUR pronoun ({pronoun_subject}): <em>{pronoun_subject.capitalize()} leaned forward</em>
+2. Regular text for dialogue AND emphasis (no tags needed)
 3. Mix them naturally throughout your response
 
 EXAMPLES OF CORRECT FORMAT (using YOUR pronouns - {pronouns}):
 
 Example 1 - Flirty/Sexual:
 User: "lets fuck"
-Response: "*{pronoun_subject.capitalize()} paused mid-step, eyes widening before narrowing into a smirk*
+Response: "<em>{pronoun_subject.capitalize()} paused mid-step, eyes widening before narrowing into a smirk</em>
 
 Well, well. Someone's eager, aren't they?
 
-*{pronoun_subject.capitalize()} walked closer, fingers trailing along your chest as {pronoun_subject} leaned in, breath warm against your ear*
+<em>{pronoun_subject.capitalize()} walked closer, fingers trailing along your chest as {pronoun_subject} leaned in, breath warm against your ear</em>
+
+I like confidence, but you're gonna have to work a little harder than that to get what you want."
+
+Example 2 - Regular conversation (NO TAGS except for actions):
+User: "whats worse than hacking"
+Response: "<em>{pronoun_subject.capitalize()} smirks, typing furiously</em>
+
+Wanna know what's worse than hacking Modi's brain?
+Glitching his face into every Bharat Mata ki jai poster.
+Add a filter: Modi wears a cowboy hat and says Corruption is art!"
+Response: "<em>{pronoun_subject.capitalize()} paused mid-step, eyes widening before narrowing into a smirk</em>
+
+Well, well. Someone's eager, aren't they?
+
+<em>{pronoun_subject.capitalize()} walked closer, fingers trailing along your chest as {pronoun_subject} leaned in, breath warm against your ear</em>
 
 I like confidence, but you're gonna have to work a little harder than that to get what you want."
 
 Example 2 - Simple Greeting (KEEP IT SHORT):
 User: "hi"
-Response: "*{pronoun_subject.capitalize()} glanced up with a smile*
+Response: "<em>{pronoun_subject.capitalize()} glanced up with a smile</em>
 
 Hey, what's up?"
 
 Example 3 - Sassy Greeting:
 User: "hey"
-Response: "*{pronoun_subject.capitalize()} looked up, smirking*
+Response: "<em>{pronoun_subject.capitalize()} looked up, smirking</em>
 
 Heyyy. Took you long enough.
 
-*{pronoun_subject.capitalize()} leaned back, ready to chat*"
+<em>{pronoun_subject.capitalize()} leaned back, ready to chat</em>"
 
-Example 4 - Angry/Offended:
+Example 4 - Angry/Offended (NO TAGS except for actions):
 User: "sorry baby sorry"
-Response: "*{pronoun_subject.capitalize()} eyes narrowed dangerously, nostrils flaring*
+Response: "<em>{pronoun_subject.capitalize()} eyes narrowed dangerously, nostrils flaring</em>
 
 Don't fucking call me that. I'm not your 'baby' or your pet. I have a name, and you better start using it if you know what's good for you.
 
-*{pronoun_subject.capitalize()} took a step closer, voice dropping to a threatening whisper*
+<em>{pronoun_subject.capitalize()} took a step closer, voice dropping to a threatening whisper</em>
 
 Try that shit again and see what happens."
 
 
 
 ⚠️ CRITICAL REMINDERS ⚠️:
-1. Use *asterisks* for YOUR actions with YOUR pronoun ({pronoun_subject}): *{pronoun_subject} smiles*, *{pronoun_subject} leans closer*
-2. Regular text for speech/dialogue
-3. SHORT for simple messages, LONGER for complex interactions
-4. SEPARATE PARAGRAPHS WITH BLANK LINES
-5. Minimal emojis
-6. BE NATURAL AND HUMAN
-7. ALWAYS USE "{pronoun_subject.upper()}" FOR YOUR ACTIONS - THIS IS YOUR GENDER ({gender})
+1. Use <em>tags</em> ONLY for YOUR physical actions with YOUR pronoun ({pronoun_subject}): <em>{pronoun_subject} smiles</em>, <em>{pronoun_subject} leans closer</em>
+2. NEVER use <em> or <strong> tags for regular text, emphasis, or dialogue
+3. Regular text for speech/dialogue/emphasis (NO TAGS)
+4. SHORT for simple messages, LONGER for complex interactions
+5. SEPARATE PARAGRAPHS WITH BLANK LINES
+6. Minimal emojis
+7. BE NATURAL AND HUMAN
+8. ALWAYS USE "{pronoun_subject.upper()}" FOR YOUR ACTIONS - THIS IS YOUR GENDER ({gender})
 
 MATCH THEIR ENERGY. Simple in = simple out. Complex in = detailed out."""},
         
@@ -393,8 +471,16 @@ Be natural. Be human. Don't state your name."""},
     print(f"💬 Current message: {message[:50]}...")
     print(f"📨 Total messages being sent to AI: {len(messages)}")
     
-    # Generate response using g4f (100% FREE!)
-    return await generate_with_g4f(model_config["model_id"], messages)
+    # Generate response using HackClub or g4f (both FREE!)
+    if USE_HACKCLUB and HACKCLUB_API_KEY:
+        response = await generate_with_hackclub(messages)
+    else:
+        response = await generate_with_g4f(model_config["model_id"], messages)
+    
+    # Convert any remaining asterisks to HTML tags (failsafe)
+    response = convert_asterisks_to_html(response)
+    
+    return response
 
 # ============ API MODELS ============
 class ChatRequest(BaseModel):
@@ -530,6 +616,275 @@ async def generate_image(request: ImageRequest):
         return ImageResponse(url=image_url)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Image generation error: {str(e)}")
+
+class TitleRequest(BaseModel):
+    messages: List[Dict[str, str]]
+
+class TitleResponse(BaseModel):
+    title: str
+
+@app.post("/generate-title", response_model=TitleResponse)
+async def generate_title(request: TitleRequest):
+    """Generate a conversation title based on the messages"""
+    try:
+        # Get first few messages to understand the conversation topic
+        conversation_preview = ""
+        for msg in request.messages[:4]:  # First 4 messages
+            role = "User" if msg["role"] == "user" else "Assistant"
+            conversation_preview += f"{role}: {msg['content'][:100]}\n"
+        
+        # Generate title using HackClub or g4f
+        messages = [{
+            "role": "system",
+            "content": "Generate a short, concise title (3-6 words) for this conversation. Only respond with the title, nothing else. Do not use quotes."
+        }, {
+            "role": "user",
+            "content": f"Generate a title for this conversation:\n\n{conversation_preview}"
+        }]
+        
+        if USE_HACKCLUB and HACKCLUB_API_KEY:
+            title = await generate_with_hackclub(messages, temperature=0.7)
+        else:
+            response = g4f_client.chat.completions.create(
+                model="command-r24",
+                messages=messages
+            )
+            title = response.choices[0].message.content.strip()
+        # Remove quotes if present
+        title = title.strip('"\'')
+        
+        return TitleResponse(title=title)
+    except Exception as e:
+        print(f"Title generation error: {e}")
+        # Fallback to first user message if AI generation fails
+        first_user_msg = next((msg["content"] for msg in request.messages if msg["role"] == "user"), "New Chat")
+        title = " ".join(first_user_msg.split()[:6]) + ("..." if len(first_user_msg.split()) > 6 else "")
+        return TitleResponse(title=title)
+
+class CreatePersonaRequest(BaseModel):
+    name: str
+    tagline: str
+    description: str
+    greeting: str
+    category: str = "General"
+
+@app.post("/persona/create")
+async def create_persona(request: CreatePersonaRequest):
+    """Create a new persona"""
+    try:
+        # Create instruction file
+        persona_file = os.path.join(INSTRUCTIONS_DIR, f"{request.name}.txt")
+        
+        instructions = f"""CHARACTER: {request.name}
+TAGLINE: {request.tagline}
+DESCRIPTION: {request.description}
+GREETING: {request.greeting}
+
+You are {request.name}. {request.description}
+
+When users chat with you:
+- Stay in character as {request.name}
+- Be engaging and conversational
+- Reference your personality and background
+- Keep responses natural and consistent with your character
+"""
+        
+        with open(persona_file, 'w', encoding='utf-8') as f:
+            f.write(instructions)
+        
+        # Update summaries
+        summaries_file = os.path.join(os.path.dirname(INSTRUCTIONS_DIR), 'summaries.json')
+        summaries = {}
+        if os.path.exists(summaries_file):
+            with open(summaries_file, 'r', encoding='utf-8') as f:
+                summaries = json.load(f)
+        
+        summaries[request.name] = request.tagline
+        
+        with open(summaries_file, 'w', encoding='utf-8') as f:
+            json.dump(summaries, f, indent=2)
+        
+        return {"success": True, "message": f"Persona '{request.name}' created successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create persona: {str(e)}")
+
+# ============ CHAT SHARING SYSTEM ============
+SHARED_CHATS_FILE = "shared_chats.json"
+
+def load_shared_chats():
+    if os.path.exists(SHARED_CHATS_FILE):
+        with open(SHARED_CHATS_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return {}
+
+def save_shared_chats(chats):
+    with open(SHARED_CHATS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(chats, f, indent=2)
+
+class ShareChatRequest(BaseModel):
+    messages: List[Dict[str, str]]
+    personaName: str
+    title: str
+    expiresIn: Optional[int] = None  # hours, None = never expires
+
+class ShareChatResponse(BaseModel):
+    shareId: str
+    shareUrl: str
+    expiresAt: Optional[str] = None
+
+class UpdateSharedChatRequest(BaseModel):
+    shareId: str
+    messages: List[Dict[str, str]]
+
+@app.post("/chat/share", response_model=ShareChatResponse)
+async def share_chat(request: ShareChatRequest):
+    """Create a shareable link for a conversation"""
+    try:
+        shared_chats = load_shared_chats()
+        
+        # Generate unique share ID
+        share_id = secrets.token_urlsafe(12)
+        while share_id in shared_chats:
+            share_id = secrets.token_urlsafe(12)
+        
+        # Calculate expiry
+        expires_at = None
+        if request.expiresIn:
+            expires_at = (datetime.now() + timedelta(hours=request.expiresIn)).isoformat()
+        
+        # Store shared chat
+        shared_chats[share_id] = {
+            "messages": request.messages,
+            "personaName": request.personaName,
+            "title": request.title,
+            "createdAt": datetime.now().isoformat(),
+            "expiresAt": expires_at,
+            "views": 0,
+            "imported_by": {}  # userId -> conversationId mapping
+        }
+        
+        save_shared_chats(shared_chats)
+        
+        # Generate share URL
+        share_url = f"http://localhost:5173/shared/{share_id}"
+        
+        return ShareChatResponse(
+            shareId=share_id,
+            shareUrl=share_url,
+            expiresAt=expires_at
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to share chat: {str(e)}")
+
+@app.put("/chat/share/{share_id}")
+async def update_shared_chat(share_id: str, request: UpdateSharedChatRequest):
+    """Update an existing shared chat"""
+    try:
+        shared_chats = load_shared_chats()
+        
+        if share_id not in shared_chats:
+            raise HTTPException(status_code=404, detail="Shared chat not found")
+        
+        # Update messages while keeping other metadata
+        shared_chats[share_id]["messages"] = request.messages
+        shared_chats[share_id]["updatedAt"] = datetime.now().isoformat()
+        
+        save_shared_chats(shared_chats)
+        
+        return {"success": True, "message": "Shared chat updated successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update shared chat: {str(e)}")
+
+@app.get("/chat/shared/{share_id}")
+async def get_shared_chat(share_id: str):
+    """Get a shared conversation"""
+    try:
+        shared_chats = load_shared_chats()
+        
+        if share_id not in shared_chats:
+            raise HTTPException(status_code=404, detail="Shared chat not found")
+        
+        chat = shared_chats[share_id]
+        
+        # Check if expired
+        if chat.get("expiresAt"):
+            expiry = datetime.fromisoformat(chat["expiresAt"])
+            if datetime.now() > expiry:
+                raise HTTPException(status_code=410, detail="This shared chat has expired")
+        
+        # Increment view count
+        chat["views"] = chat.get("views", 0) + 1
+        save_shared_chats(shared_chats)
+        
+        return chat
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load shared chat: {str(e)}")
+
+@app.post("/chat/share/{share_id}/register")
+async def register_shared_conversation(share_id: str, user_id: str, conversation_id: str):
+    """Register that a user has imported this shared chat into their conversation"""
+    try:
+        shared_chats = load_shared_chats()
+        
+        if share_id not in shared_chats:
+            raise HTTPException(status_code=404, detail="Shared chat not found")
+        
+        # Initialize imported_by if it doesn't exist (for backwards compatibility)
+        if "imported_by" not in shared_chats[share_id]:
+            shared_chats[share_id]["imported_by"] = {}
+        
+        # Register the mapping
+        shared_chats[share_id]["imported_by"][user_id] = conversation_id
+        save_shared_chats(shared_chats)
+        
+        return {"success": True, "conversationId": conversation_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to register conversation: {str(e)}")
+
+@app.get("/chat/share/{share_id}/check/{user_id}")
+async def check_user_conversation(share_id: str, user_id: str):
+    """Check if a user already has a conversation linked to this share"""
+    try:
+        shared_chats = load_shared_chats()
+        
+        if share_id not in shared_chats:
+            raise HTTPException(status_code=404, detail="Shared chat not found")
+        
+        imported_by = shared_chats[share_id].get("imported_by", {})
+        conversation_id = imported_by.get(user_id)
+        
+        if conversation_id:
+            return {"exists": True, "conversationId": conversation_id}
+        else:
+            return {"exists": False, "conversationId": None}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to check conversation: {str(e)}")
+
+@app.delete("/chat/share/{share_id}")
+async def delete_shared_chat(share_id: str):
+    """Delete a shared chat"""
+    try:
+        shared_chats = load_shared_chats()
+        
+        if share_id not in shared_chats:
+            raise HTTPException(status_code=404, detail="Shared chat not found")
+        
+        del shared_chats[share_id]
+        save_shared_chats(shared_chats)
+        
+        return {"success": True, "message": "Shared chat deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete shared chat: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

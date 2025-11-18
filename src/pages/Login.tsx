@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Mail, Lock, User as UserIcon, Sparkles } from 'lucide-react';
 
 const Login = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get('redirect') || '/';
   const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
   
   const [isSignUp, setIsSignUp] = useState(false);
@@ -19,7 +21,7 @@ const Login = () => {
       setLoading(true);
       setError('');
       await signInWithGoogle();
-      navigate('/');
+      navigate(redirectTo);
     } catch (err: any) {
       setError(err.message || 'Failed to sign in with Google');
     } finally {
@@ -50,7 +52,7 @@ const Login = () => {
         await signInWithEmail(email, password);
       }
       
-      navigate('/');
+      navigate(redirectTo);
     } catch (err: any) {
       setError(err.message || 'Authentication failed');
     } finally {

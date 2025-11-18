@@ -1,313 +1,246 @@
 import { useState } from 'react';
-import { ArrowLeft, Plus, Trash2, Save, Eye } from 'lucide-react';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { Textarea } from '../components/ui/Textarea';
-import { Slider } from '../components/ui/Slider';
-import { Chip } from '../components/ui/Chip';
-import { Card } from '../components/ui/Card';
-import { Avatar } from '../components/ui/Avatar';
-import { ExampleDialogue } from '../types';
+import { ArrowLeft, Upload, BookOpen, Sparkles, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { api } from '../services/api';
 
 interface PersonaCreatorProps {
-  onBack: () => void;
-  onSave: () => void;
+  onBack?: () => void;
+  onSave?: () => void;
 }
 
-export function PersonaCreator({ onBack, onSave }: PersonaCreatorProps) {
+export function PersonaCreator({ onBack }: PersonaCreatorProps) {
+  const navigate = useNavigate();
   const [name, setName] = useState('');
-  const [subtitle, setSubtitle] = useState('');
+  const [tagline, setTagline] = useState('');
   const [description, setDescription] = useState('');
-  const [longDescription, setLongDescription] = useState('');
-  const [tags, setTags] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState('');
-  const [category, setCategory] = useState('Friends');
-  const [creativity, setCreativity] = useState(70);
-  const [strictness, setStrictness] = useState(50);
-  const [personalityStrength, setPersonalityStrength] = useState(80);
-  const [exampleDialogues, setExampleDialogues] = useState<ExampleDialogue[]>([
-    { id: '1', userMessage: '', personaResponse: '' },
-  ]);
-  const [avatarPreview] = useState('https://images.pexels.com/photos/1704488/pexels-photo-1704488.jpeg?auto=compress&cs=tinysrgb&w=200');
-  const [showPreview, setShowPreview] = useState(false);
+  const [greeting, setGreeting] = useState('');
+  const [avatarEmoji, setAvatarEmoji] = useState('🎭');
+  const [category, setCategory] = useState('General');
+  const [visibility, setVisibility] = useState<'public' | 'private'>('public');
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState('');
 
-  const categories = ['Friends', 'Romance', 'Anime', 'Games', 'Horror', 'Tech', 'Fantasy', 'Comedy'];
-
-  const handleAddTag = () => {
-    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
-      setTags([...tags, tagInput.trim()]);
-      setTagInput('');
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+    } else {
+      navigate('/');
     }
   };
 
-  const handleRemoveTag = (tagToRemove: string) => {
-    setTags(tags.filter((tag) => tag !== tagToRemove));
-  };
+  const handleSubmit = async () => {
+    if (!name.trim() || !tagline.trim() || !description.trim() || !greeting.trim()) {
+      setError('Please fill in all required fields');
+      return;
+    }
 
-  const handleAddDialogue = () => {
-    setExampleDialogues([
-      ...exampleDialogues,
-      { id: Date.now().toString(), userMessage: '', personaResponse: '' },
-    ]);
-  };
+    setCreating(true);
+    setError('');
 
-  const handleRemoveDialogue = (id: string) => {
-    setExampleDialogues(exampleDialogues.filter((d) => d.id !== id));
-  };
-
-  const handleDialogueChange = (id: string, field: 'userMessage' | 'personaResponse', value: string) => {
-    setExampleDialogues(
-      exampleDialogues.map((d) => (d.id === id ? { ...d, [field]: value } : d))
-    );
+    try {
+      await api.createPersona({
+        name: name.trim(),
+        tagline: tagline.trim(),
+        description: description.trim(),
+        greeting: greeting.trim(),
+        category,
+      });
+      
+      // Navigate to the newly created persona
+      navigate(`/chat?persona=${encodeURIComponent(name.trim())}`);
+    } catch (err: any) {
+      console.error('Failed to create persona:', err);
+      setError(err.message || 'Failed to create persona. Please try again.');
+    } finally {
+      setCreating(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900">
-      <header className="sticky top-0 z-10 bg-white dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700 px-4 py-4">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onBack}
-              className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-xl transition-colors"
+    <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center p-4">
+      <div className="w-full max-w-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <button
+            onClick={handleBack}
+            className="p-2 hover:bg-white/5 rounded-lg transition-all text-white/70"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <h1 className="text-2xl font-semibold text-white">Create character</h1>
+          <button className="text-sm text-white/70 hover:text-white/90 transition-all flex items-center gap-1">
+            <BookOpen size={16} />
+            View Character Book
+          </button>
+        </div>
+
+        {/* Form Card */}
+        <div className="bg-[#1a1a1a] rounded-2xl border border-white/5 p-6 space-y-6">
+          {/* Avatar Upload */}
+          <div className="flex flex-col items-center">
+            <div className="relative group">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-4xl mb-3 group-hover:opacity-80 transition-all cursor-pointer">
+                {avatarEmoji}
+              </div>
+              <button className="absolute bottom-2 right-0 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-all">
+                <Upload size={16} className="text-white" />
+              </button>
+            </div>
+            <p className="text-xs text-white/40 text-center mt-2">
+              Click to upload an image or choose an emoji
+            </p>
+          </div>
+
+          {/* Character Name */}
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              Character name
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={20}
+              placeholder="e.g. Luna"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/30 focus:outline-none focus:border-white/20 transition-all"
+            />
+            <div className="text-xs text-white/40 mt-1 text-right">{name.length}/20</div>
+          </div>
+
+          {/* Tagline */}
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              Tagline
+            </label>
+            <input
+              type="text"
+              value={tagline}
+              onChange={(e) => setTagline(e.target.value)}
+              maxLength={50}
+              placeholder="e.g. Your thoughtful companion"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/30 focus:outline-none focus:border-white/20 transition-all"
+            />
+            <div className="text-xs text-white/40 mt-1 text-right">{tagline.length}/50</div>
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              Description
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              maxLength={500}
+              rows={4}
+              placeholder="How would you describe this character?"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/30 focus:outline-none focus:border-white/20 transition-all resize-none"
+            />
+            <div className="text-xs text-white/40 mt-1 text-right">{description.length}/500</div>
+          </div>
+
+          {/* Greeting */}
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              Greeting
+            </label>
+            <textarea
+              value={greeting}
+              onChange={(e) => setGreeting(e.target.value)}
+              maxLength={4096}
+              rows={6}
+              placeholder="What will this character say to start the conversation?"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/30 focus:outline-none focus:border-white/20 transition-all resize-none"
+            />
+            <div className="text-xs text-white/40 mt-1 text-right">{greeting.length}/4096</div>
+          </div>
+
+          {/* Category */}
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              Category
+            </label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-white/20 transition-all"
             >
-              <ArrowLeft className="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
-            </button>
-            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
-              Create Persona
-            </h1>
+              <option value="General">General</option>
+              <option value="Anime">Anime</option>
+              <option value="Celebrity">Celebrity</option>
+              <option value="Professional">Professional</option>
+              <option value="Assistant">Assistant</option>
+              <option value="Dark">Dark</option>
+            </select>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" onClick={() => setShowPreview(!showPreview)}>
-              <Eye className="w-5 h-5" />
-              Preview
-            </Button>
-            <Button onClick={onSave}>
-              <Save className="w-5 h-5" />
-              Publish
-            </Button>
+
+          {/* Visibility */}
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-3">
+              Visibility
+            </label>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setVisibility('public')}
+                className={`flex-1 px-4 py-3 rounded-xl border transition-all ${
+                  visibility === 'public'
+                    ? 'bg-white/10 border-white/20 text-white'
+                    : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/[0.07]'
+                }`}
+              >
+                <div className="font-medium">Public</div>
+                <div className="text-xs text-white/40 mt-1">Anyone can chat</div>
+              </button>
+              <button
+                onClick={() => setVisibility('private')}
+                className={`flex-1 px-4 py-3 rounded-xl border transition-all ${
+                  visibility === 'private'
+                    ? 'bg-white/10 border-white/20 text-white'
+                    : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/[0.07]'
+                }`}
+              >
+                <div className="font-medium">Private</div>
+                <div className="text-xs text-white/40 mt-1">Only you</div>
+              </button>
+            </div>
           </div>
-        </div>
-      </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-8">
-        <div className="space-y-8">
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-6">
-              Basic Information
-            </h2>
-            <div className="space-y-6">
-              <div className="flex items-center gap-6">
-                <Avatar src={avatarPreview} alt="Persona" size="2xl" />
-                <div className="flex-1">
-                  <Button variant="secondary" size="sm">
-                    Upload Avatar
-                  </Button>
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">
-                    Recommended: Square image, at least 400x400px
-                  </p>
-                </div>
-              </div>
-              <Input
-                label="Persona Name"
-                placeholder="Enter a unique name..."
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-              <Input
-                label="Subtitle"
-                placeholder="A short tagline (e.g., 'Your thoughtful companion')"
-                value={subtitle}
-                onChange={(e) => setSubtitle(e.target.value)}
-              />
-              <Textarea
-                label="Short Description"
-                placeholder="A brief description (2-3 lines) that appears on the persona card..."
-                rows={3}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-              <Textarea
-                label="Detailed Description"
-                placeholder="A comprehensive description of the persona's personality, background, and traits..."
-                rows={6}
-                value={longDescription}
-                onChange={(e) => setLongDescription(e.target.value)}
-              />
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-3">
-                  Category
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {categories.map((cat) => (
-                    <Chip
-                      key={cat}
-                      active={category === cat}
-                      onClick={() => setCategory(cat)}
-                    >
-                      {cat}
-                    </Chip>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-                  Tags
-                </label>
-                <div className="flex gap-2 mb-3">
-                  <Input
-                    placeholder="Add a tag..."
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
-                  />
-                  <Button onClick={handleAddTag}>Add</Button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {tags.map((tag) => (
-                    <Chip key={tag} variant="primary">
-                      {tag}
-                      <button
-                        onClick={() => handleRemoveTag(tag)}
-                        className="ml-1.5 hover:text-white/80"
-                      >
-                        ×
-                      </button>
-                    </Chip>
-                  ))}
-                </div>
-              </div>
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-red-400 text-sm">
+              {error}
             </div>
-          </Card>
-
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-6">
-              Persona Behavior
-            </h2>
-            <div className="space-y-6">
-              <div>
-                <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
-                  Adjust these settings to control how your persona responds and interacts.
-                </p>
-                <Slider
-                  label="Creativity"
-                  value={creativity}
-                  onChange={(e) => setCreativity(Number(e.target.value))}
-                  min={0}
-                  max={100}
-                />
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                  Higher values make responses more creative and varied
-                </p>
-              </div>
-              <Slider
-                label="Response Strictness"
-                value={strictness}
-                onChange={(e) => setStrictness(Number(e.target.value))}
-                min={0}
-                max={100}
-              />
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 -mt-4">
-                Higher values keep responses more focused and on-topic
-              </p>
-              <Slider
-                label="Personality Strength"
-                value={personalityStrength}
-                onChange={(e) => setPersonalityStrength(Number(e.target.value))}
-                min={0}
-                max={100}
-              />
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 -mt-4">
-                Higher values make the persona's traits more prominent
-              </p>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">
-                  Example Dialogues
-                </h2>
-                <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-                  Provide examples of how your persona should respond
-                </p>
-              </div>
-              <Button onClick={handleAddDialogue} size="sm">
-                <Plus className="w-4 h-4" />
-                Add Example
-              </Button>
-            </div>
-            <div className="space-y-6">
-              {exampleDialogues.map((dialogue, index) => (
-                <Card key={dialogue.id} className="p-4 bg-neutral-50 dark:bg-neutral-900/50">
-                  <div className="flex items-start justify-between mb-4">
-                    <h3 className="font-medium text-neutral-900 dark:text-white">
-                      Example {index + 1}
-                    </h3>
-                    {exampleDialogues.length > 1 && (
-                      <button
-                        onClick={() => handleRemoveDialogue(dialogue.id)}
-                        className="p-1 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4 text-red-500" />
-                      </button>
-                    )}
-                  </div>
-                  <div className="space-y-4">
-                    <Textarea
-                      label="User Message"
-                      placeholder="What the user might say..."
-                      rows={2}
-                      value={dialogue.userMessage}
-                      onChange={(e) =>
-                        handleDialogueChange(dialogue.id, 'userMessage', e.target.value)
-                      }
-                    />
-                    <Textarea
-                      label="Persona Response"
-                      placeholder="How your persona should respond..."
-                      rows={3}
-                      value={dialogue.personaResponse}
-                      onChange={(e) =>
-                        handleDialogueChange(dialogue.id, 'personaResponse', e.target.value)
-                      }
-                    />
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </Card>
-
-          {showPreview && (
-            <Card className="p-6">
-              <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-6">
-                Preview
-              </h2>
-              <div className="flex items-start gap-4 p-5 bg-neutral-50 dark:bg-neutral-900/50 rounded-xl">
-                <Avatar src={avatarPreview} alt={name || 'Persona'} size="lg" />
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-neutral-900 dark:text-white mb-1">
-                    {name || 'Persona Name'}
-                  </h3>
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-1">
-                    {subtitle || 'Persona subtitle'}
-                  </p>
-                  <p className="text-sm text-neutral-600 dark:text-neutral-300 mb-3">
-                    {description || 'Persona description will appear here...'}
-                  </p>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {tags.map((tag) => (
-                      <Chip key={tag} size="sm" variant="outlined">
-                        {tag}
-                      </Chip>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </Card>
           )}
+
+          {/* Action Buttons */}
+          <div className="flex gap-3 pt-4">
+            <button
+              onClick={handleBack}
+              disabled={creating}
+              className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white font-medium transition-all disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={!name.trim() || !tagline.trim() || !description.trim() || !greeting.trim() || creating}
+              className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-white/10 disabled:to-white/10 disabled:text-white/30 rounded-xl text-white font-medium transition-all flex items-center justify-center gap-2 disabled:cursor-not-allowed"
+            >
+              {creating ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Sparkles size={18} />
+                  Create character
+                </>
+              )}
+            </button>
+          </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

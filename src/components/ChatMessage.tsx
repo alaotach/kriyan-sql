@@ -2,9 +2,6 @@ import { Copy, RotateCw, ThumbsUp, ThumbsDown, Trash2 } from 'lucide-react';
 import { Message } from '../types';
 import { Avatar } from './ui/Avatar';
 import { useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeRaw from 'rehype-raw';
 
 interface ChatMessageProps {
   message: Message;
@@ -16,16 +13,82 @@ interface ChatMessageProps {
 export function ChatMessage({ message, onRegenerate, onDelete, onRate }: ChatMessageProps) {
   const [copied, setCopied] = useState(false);
 
+  console.log('ChatMessage rendered with content:', message.content?.substring(0, 100));
+
   const handleCopy = () => {
     navigator.clipboard.writeText(message.content);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Preprocess content to ensure markdown parses correctly
-  const preprocessContent = (content: string) => {
-    // Add space after *action* if immediately followed by text (no space/newline)
-    return content.replace(/(\*[^*]+\*)([^\s*\n])/g, '$1 $2');
+  // Parse HTML tags and render as React components
+  const renderFormattedMessage = (text: string) => {
+    console.log('Rendering text:', text);
+    const parts: React.ReactNode[] = [];
+    let i = 0;
+    let key = 0;
+    let currentText = '';
+
+    while (i < text.length) {
+      // Check if we're at a tag
+      if (text[i] === '<') {
+        // Check for <strong>
+        if (text.substring(i, i + 8) === '<strong>') {
+          // Push any accumulated text
+          if (currentText) {
+            parts.push(currentText);
+            currentText = '';
+          }
+          
+          // Find closing </strong>
+          const closeIndex = text.indexOf('</strong>', i + 8);
+          if (closeIndex !== -1) {
+            const content = text.substring(i + 8, closeIndex);
+            parts.push(
+              <strong key={`strong-${key++}`} className="font-bold">
+                {content}
+              </strong>
+            );
+            i = closeIndex + 9; // Skip past </strong>
+            continue;
+          }
+        }
+        // Check for <em>
+        else if (text.substring(i, i + 4) === '<em>') {
+          // Push any accumulated text
+          if (currentText) {
+            parts.push(currentText);
+            currentText = '';
+          }
+          
+          // Find closing </em>
+          const closeIndex = text.indexOf('</em>', i + 4);
+          if (closeIndex !== -1) {
+            const content = text.substring(i + 4, closeIndex);
+            parts.push(
+              <em key={`em-${key++}`} className="text-purple-500 dark:text-purple-400 italic">
+                {content}
+              </em>
+            );
+            i = closeIndex + 5; // Skip past </em>
+            continue;
+          }
+        }
+      }
+      
+      // Regular character
+      currentText += text[i];
+      i++;
+    }
+    
+    // Push any remaining text
+    if (currentText) {
+      parts.push(currentText);
+    }
+    
+    console.log('Parsed parts:', parts);
+
+    return <>{parts}</>;
   };
 
   if (message.isTyping) {
@@ -58,30 +121,8 @@ export function ChatMessage({ message, onRegenerate, onDelete, onRate }: ChatMes
               : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white rounded-tl-sm'
           }`}
         >
-          <div className="text-sm whitespace-pre-line break-words">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              rehypePlugins={[rehypeRaw]}
-              components={{
-                // *actions* => purple italic (Character.AI style)
-                em: ({ node, ...props }) => (
-                  <em
-                    className="italic text-purple-500 dark:text-purple-400"
-                    {...props}
-                  />
-                ),
-                // **bold**
-                strong: ({ node, ...props }) => (
-                  <strong className="font-bold" {...props} />
-                ),
-                // paragraphs with spacing
-                p: ({ node, ...props }) => (
-                  <p className="my-2 first:mt-0 last:mb-0" {...props} />
-                ),
-              }}
-            >
-              {preprocessContent(message.content)}
-            </ReactMarkdown>
+          <div className="text-sm break-words leading-relaxed whitespace-pre-line">
+            {renderFormattedMessage(message.content)}
           </div>
         </div>
         <span className="text-xs text-neutral-400 mt-1 px-1">

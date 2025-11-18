@@ -99,4 +99,135 @@ export const api = {
     }
     return response.json();
   },
+
+  async generateTitle(messages: Array<{ role: string; content: string }>): Promise<string> {
+    const response = await fetch(`${API_BASE_URL}/generate-title`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ messages }),
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to generate title: ${response.status}`);
+    }
+    const data = await response.json();
+    return data.title;
+  },
+
+  async createPersona(persona: {
+    name: string;
+    tagline: string;
+    description: string;
+    greeting: string;
+    category?: string;
+  }): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${API_BASE_URL}/persona/create`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(persona),
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to create persona: ${response.status}`);
+    }
+    return response.json();
+  },
+
+  async shareChat(
+    messages: Array<{ role: string; content: string }>,
+    personaName: string,
+    title: string,
+    expiresIn?: number
+  ): Promise<{ shareId: string; shareUrl: string; expiresAt?: string }> {
+    const response = await fetch(`${API_BASE_URL}/chat/share`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ messages, personaName, title, expiresIn }),
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to share chat: ${response.status}`);
+    }
+    return response.json();
+  },
+
+  async updateSharedChat(
+    shareId: string,
+    messages: Array<{ role: string; content: string }>
+  ): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${API_BASE_URL}/chat/share/${shareId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ shareId, messages }),
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to update shared chat: ${response.status}`);
+    }
+    return response.json();
+  },
+
+  async getSharedChat(shareId: string): Promise<{
+    messages: Array<{ role: string; content: string }>;
+    personaName: string;
+    title: string;
+    createdAt: string;
+    updatedAt?: string;
+    expiresAt?: string;
+    views: number;
+  }> {
+    const response = await fetch(`${API_BASE_URL}/chat/shared/${shareId}`);
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error('Shared chat not found');
+      }
+      if (response.status === 410) {
+        throw new Error('This shared chat has expired');
+      }
+      throw new Error(`Failed to get shared chat: ${response.status}`);
+    }
+    return response.json();
+  },
+
+  async deleteSharedChat(shareId: string): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${API_BASE_URL}/chat/share/${shareId}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to delete shared chat: ${response.status}`);
+    }
+    return response.json();
+  },
+
+  async registerSharedConversation(
+    shareId: string,
+    userId: string,
+    conversationId: string
+  ): Promise<{ success: boolean; conversationId: string }> {
+    const response = await fetch(
+      `${API_BASE_URL}/chat/share/${shareId}/register?user_id=${encodeURIComponent(userId)}&conversation_id=${encodeURIComponent(conversationId)}`,
+      {
+        method: 'POST',
+      }
+    );
+    if (!response.ok) {
+      throw new Error(`Failed to register conversation: ${response.status}`);
+    }
+    return response.json();
+  },
+
+  async checkUserConversation(
+    shareId: string,
+    userId: string
+  ): Promise<{ exists: boolean; conversationId: string | null }> {
+    const response = await fetch(`${API_BASE_URL}/chat/share/${shareId}/check/${encodeURIComponent(userId)}`);
+    if (!response.ok) {
+      throw new Error(`Failed to check conversation: ${response.status}`);
+    }
+    return response.json();
+  },
 };
