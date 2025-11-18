@@ -1,5 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 import {
   Send,
   ArrowLeft,
@@ -469,7 +472,7 @@ const Chat = () => {
         <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
           {messages.map((message, index) => (
             <div
-              key={message.id}
+              key={`${message.id}-${index}`}
               className={`flex gap-3 group ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
             >
               {message.role === 'assistant' && (
@@ -510,7 +513,18 @@ const Chat = () => {
                     </div>
                   ) : (
                     <>
-                      <p className="whitespace-pre-wrap">{message.content}</p>
+                      <div className="whitespace-pre-wrap">
+                        {message.content.split(/(\*[^*]+\*)/g).map((part, i) => {
+                          if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
+                            return (
+                              <span key={i} className="italic text-purple-400">
+                                {part.slice(1, -1)}
+                              </span>
+                            );
+                          }
+                          return part;
+                        })}
+                      </div>
                       {message.imageUrl && (
                         <img
                           src={message.imageUrl}

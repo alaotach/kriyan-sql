@@ -4,6 +4,7 @@ import { Avatar } from './ui/Avatar';
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 
 interface ChatMessageProps {
   message: Message;
@@ -19,6 +20,12 @@ export function ChatMessage({ message, onRegenerate, onDelete, onRate }: ChatMes
     navigator.clipboard.writeText(message.content);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  // Preprocess content to ensure markdown parses correctly
+  const preprocessContent = (content: string) => {
+    // Add space after *action* if immediately followed by text (no space/newline)
+    return content.replace(/(\*[^*]+\*)([^\s*\n])/g, '$1 $2');
   };
 
   if (message.isTyping) {
@@ -51,25 +58,29 @@ export function ChatMessage({ message, onRegenerate, onDelete, onRate }: ChatMes
               : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white rounded-tl-sm'
           }`}
         >
-          <div className="text-sm whitespace-pre-wrap break-words">
-            <ReactMarkdown 
+          <div className="text-sm whitespace-pre-line break-words">
+            <ReactMarkdown
               remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeRaw]}
               components={{
-                // Style for actions: *text*
-                em: ({node, ...props}) => (
-                  <em className="not-italic text-purple-500 dark:text-purple-400" {...props} />
+                // *actions* => purple italic (Character.AI style)
+                em: ({ node, ...props }) => (
+                  <em
+                    className="italic text-purple-500 dark:text-purple-400"
+                    {...props}
+                  />
                 ),
-                // Style for bold: **text**
-                strong: ({node, ...props}) => (
+                // **bold**
+                strong: ({ node, ...props }) => (
                   <strong className="font-bold" {...props} />
                 ),
-                // Style for paragraphs
-                p: ({node, ...props}) => (
-                  <p className="my-1" {...props} />
+                // paragraphs with spacing
+                p: ({ node, ...props }) => (
+                  <p className="my-2 first:mt-0 last:mb-0" {...props} />
                 ),
               }}
             >
-              {message.content}
+              {preprocessContent(message.content)}
             </ReactMarkdown>
           </div>
         </div>
