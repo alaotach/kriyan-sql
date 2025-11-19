@@ -861,17 +861,9 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
                     <button
                       key={persona}
                       onClick={() => {
-                        const currentPath = window.location.pathname;
                         setShowNewChatModal(false);
                         onClose();
-                        
-                        if (currentPath === '/') {
-                          // On homepage, open chat modal
-                          window.dispatchEvent(new CustomEvent('openChatModal', { detail: persona }));
-                        } else {
-                          // On chat page, navigate to new chat
-                          window.location.href = `/chat?persona=${encodeURIComponent(persona)}`;
-                        }
+                        window.location.href = `/chat?persona=${encodeURIComponent(persona)}`;
                       }}
                       className="w-full flex items-center gap-3 px-4 py-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all text-left"
                     >

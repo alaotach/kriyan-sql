@@ -7,7 +7,6 @@ import { useAuth } from '../context/AuthContext';
 import EncryptionKeyPrompt from '../components/EncryptionKeyPrompt';
 import KeyManagement from '../components/KeyManagement';
 import { PersonaCreatorModal } from '../components/PersonaCreatorModal';
-import { ChatModal } from '../components/ChatModal';
 
 interface Persona {
   name: string;
@@ -29,7 +28,6 @@ const Home = () => {
   const [showKeyManagement, setShowKeyManagement] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showPersonaCreator, setShowPersonaCreator] = useState(false);
-  const [selectedPersona, setSelectedPersona] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPersonas();
@@ -39,19 +37,9 @@ const Home = () => {
     filterPersonas();
   }, [searchQuery, selectedCategory, personas]);
 
-  useEffect(() => {
-    // Listen for custom event from Sidebar's New Chat modal
-    const handleOpenChat = (e: any) => {
-      setSelectedPersona(e.detail);
-    };
-    
-    window.addEventListener('openChatModal', handleOpenChat);
-    return () => window.removeEventListener('openChatModal', handleOpenChat);
-  }, []);
-
   const fetchPersonas = async () => {
     try {
-      const response = await fetch('http://localhost:8000/personas');
+      const response = await fetch('https://alaotach.hackclub.app/personas');
       if (!response.ok) throw new Error('Failed to fetch personas');
       const data = await response.json();
       setPersonas(data);
@@ -83,7 +71,7 @@ const Home = () => {
   };
 
   const handlePersonaClick = (personaName: string) => {
-    setSelectedPersona(personaName);
+    navigate(`/chat?persona=${encodeURIComponent(personaName)}`);
   };
 
   if (loading) {
@@ -354,22 +342,6 @@ const Home = () => {
 
       {/* Persona Creator Modal */}
       {showPersonaCreator && <PersonaCreatorModal onClose={() => setShowPersonaCreator(false)} />}
-
-      {/* Chat Modal */}
-      {selectedPersona && (
-        <ChatModal 
-          personaName={selectedPersona} 
-          onClose={() => setSelectedPersona(null)} 
-        />
-      )}
-
-      {/* Encryption Key Prompt for New Devices */}
-      {user && <EncryptionKeyPrompt userId={user.uid} />}
-
-      {/* Key Management Modal */}
-      {showKeyManagement && user && (
-        <KeyManagement userId={user.uid} onClose={() => setShowKeyManagement(false)} />
-      )}
     </div>
   );
 };
