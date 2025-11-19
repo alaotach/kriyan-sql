@@ -51,29 +51,30 @@ const Profile = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900">
-      <div className="max-w-4xl mx-auto p-6">
+      <div className="max-w-4xl mx-auto p-3 sm:p-4 md:p-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6 sm:mb-8">
           <button
             onClick={() => navigate('/')}
-            className="flex items-center gap-2 text-white/70 hover:text-white transition-colors"
+            className="flex items-center gap-1.5 sm:gap-2 text-white/70 hover:text-white transition-colors text-sm sm:text-base"
           >
-            <ArrowLeft size={20} />
-            <span>Back to Home</span>
+            <ArrowLeft size={18} className="sm:w-5 sm:h-5" />
+            <span className="hidden sm:inline">Back to Home</span>
+            <span className="sm:hidden">Back</span>
           </button>
-          <h1 className="text-3xl font-bold text-white">Profile Settings</h1>
-          <div className="w-24" /> {/* Spacer for centering */}
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white">Profile</h1>
+          <div className="w-12 sm:w-24" /> {/* Spacer for centering */}
         </div>
 
         {/* Profile Card */}
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 p-8 mb-6">
+        <div className="bg-white/10 backdrop-blur-xl rounded-xl sm:rounded-2xl border border-white/20 p-4 sm:p-6 md:p-8 mb-4 sm:mb-6">
           {/* Avatar Section */}
-          <div className="flex items-center gap-6 mb-8 pb-8 border-b border-white/10">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 mb-6 sm:mb-8 pb-6 sm:pb-8 border-b border-white/10">
             {user?.photoURL ? (
               <img 
                 src={user.photoURL} 
                 alt={user.displayName || 'Profile'} 
-                className="w-24 h-24 rounded-full object-cover border-2 border-white/20"
+                className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-2 border-white/20 flex-shrink-0"
                 onError={(e) => {
                   // Fallback to initials if image fails to load
                   e.currentTarget.style.display = 'none';
@@ -83,13 +84,13 @@ const Profile = () => {
               />
             ) : null}
             <div 
-              className="w-24 h-24 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-3xl font-bold"
+              className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-2xl sm:text-3xl font-bold flex-shrink-0"
               style={{ display: user?.photoURL ? 'none' : 'flex' }}
             >
               {user?.displayName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}
             </div>
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-1">
+            <div className="text-center sm:text-left">
+              <h2 className="text-xl sm:text-2xl font-bold text-white mb-1">
                 {user?.displayName || 'User'}
               </h2>
               <p className="text-white/70">{user?.email}</p>
@@ -163,20 +164,20 @@ const Profile = () => {
         </div>
 
         {/* Security Card */}
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 p-8 mb-6">
-          <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-            <Shield size={24} />
+        <div className="bg-white/10 backdrop-blur-xl rounded-xl sm:rounded-2xl border border-white/20 p-4 sm:p-6 md:p-8 mb-4 sm:mb-6">
+          <h3 className="text-lg sm:text-xl font-bold text-white mb-4 sm:mb-6 flex items-center gap-2">
+            <Shield size={20} className="sm:w-6 sm:h-6" />
             Security & Privacy
           </h3>
 
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <button
               onClick={() => setShowKeyManagement(true)}
-              className="w-full p-4 bg-white/5 hover:bg-white/10 border border-white/20 rounded-lg text-left transition-colors group"
+              className="w-full p-3 sm:p-4 bg-white/5 hover:bg-white/10 border border-white/20 rounded-lg text-left transition-colors group"
             >
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Key className="text-purple-400" size={24} />
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <Key className="text-purple-400 flex-shrink-0" size={20} />
                   <div>
                     <p className="text-white font-medium">Encryption Keys</p>
                     <p className="text-white/60 text-sm">Manage your end-to-end encryption keys</p>

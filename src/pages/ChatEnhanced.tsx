@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Send,
-  Settings,
   Image as ImageIcon,
   Mic,
   Edit2,
@@ -16,10 +15,9 @@ import {
   ThumbsUp,
   ThumbsDown,
   Share2,
-  Globe,
   GitBranch,
 } from 'lucide-react';
-import { api, ModelInfo } from '../services/api';
+import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Sidebar } from '../components/Sidebar';
 import { PersonaInfoSidebar } from '../components/PersonaInfoSidebar';
@@ -51,16 +49,12 @@ const Chat = () => {
   const [messageInput, setMessageInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [personaSummary, setPersonaSummary] = useState('');
-  const [selectedModel, setSelectedModel] = useState('gpt-4o-mini');
-  const [models, setModels] = useState<ModelInfo[]>([]);
-  const [showSettings, setShowSettings] = useState(false);
   const [showImageGen, setShowImageGen] = useState(false);
   const [imagePrompt, setImagePrompt] = useState('');
   const [generatingImage, setGeneratingImage] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(conversationId || null);
-  const [showRightPanel, setShowRightPanel] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showPersonaInfo, setShowPersonaInfo] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -71,10 +65,6 @@ const Chat = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const synth = typeof window !== 'undefined' ? window.speechSynthesis : null;
-
-  useEffect(() => {
-    loadModels();
-  }, []);
 
   useEffect(() => {
     if (conversationId && user) {
@@ -180,15 +170,6 @@ const Chat = () => {
     }
   };
 
-  const loadModels = async () => {
-    try {
-      const data = await api.getModels();
-      setModels(data);
-    } catch (error) {
-      console.error('Failed to load models:', error);
-    }
-  };
-
   const loadConversation = async () => {
     if (!conversationId || !user) return;
     
@@ -200,7 +181,6 @@ const Chat = () => {
           ...msg,
           timestamp: msg.timestamp?.toDate() || new Date()
         })));
-        setSelectedModel(current.model);
         setCurrentConversationId(current.id || null);
         setConversationTitle(current.title || '');
         setExistingShareId((current as any).shareId || '');
@@ -272,7 +252,6 @@ const Chat = () => {
           }
           return msg;
         }),
-        model: selectedModel,
       };
 
       // Include shareId if it exists
@@ -321,7 +300,6 @@ const Chat = () => {
         persona: personaName,
         message: textToSend,
         history, // Send all previous messages (user + assistant)
-        model: selectedModel,
       });
 
       const assistantMessage: Message = {
@@ -380,7 +358,6 @@ const Chat = () => {
         persona: personaName,
         message: previousUserMessage.content,
         history,
-        model: selectedModel,
       });
 
       const newMessage: Message = {
@@ -505,26 +482,26 @@ const Chat = () => {
       <div className="flex-1 flex flex-col">
         {/* Chat Header */}
         <header className="border-b border-white/5 bg-[#0f0f0f] sticky top-0 z-10">
-          <div className="px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          <div className="px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="md:hidden p-2 hover:bg-white/5 rounded-lg transition-all text-white/50 hover:text-white/70"
+                className="md:hidden p-2 hover:bg-white/5 rounded-lg transition-all text-white/50 hover:text-white/70 flex-shrink-0"
               >
-                <Menu size={20} />
+                <Menu size={18} />
               </button>
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold text-sm">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold text-xs sm:text-sm flex-shrink-0">
                 {personaName.charAt(0)}
               </div>
-              <div>
-                <h1 className="text-sm font-semibold text-white">{personaName}</h1>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-sm font-semibold text-white truncate">{personaName}</h1>
                 <p className="text-xs text-white/40 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
                   Online
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
               {user && (
                 <button
                   onClick={() => saveCurrentConversation()}
@@ -544,12 +521,6 @@ const Chat = () => {
                 </button>
               )}
               <button
-                onClick={() => setShowSettings(!showSettings)}
-                className="p-2 hover:bg-white/5 rounded-lg transition-all text-white/50 hover:text-white/70"
-              >
-                <Settings size={18} />
-              </button>
-              <button
                 onClick={() => setShowPersonaInfo(!showPersonaInfo)}
                 className="p-2 hover:bg-white/5 rounded-lg transition-all text-white/50 hover:text-white/70"
                 title="Info"
@@ -559,44 +530,6 @@ const Chat = () => {
             </div>
           </div>
         </header>
-
-      {/* Settings Panel */}
-      {showSettings && (
-        <div className="bg-purple-900/50 backdrop-blur-md border-b border-white/10">
-          <div className="max-w-5xl mx-auto px-4 py-4">
-            <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
-              <Globe size={20} />
-              AI Model Selection
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {models.map((model) => (
-                <button
-                  key={model.id}
-                  onClick={() => {
-                    setSelectedModel(model.id);
-                    setShowSettings(false);
-                  }}
-                  className={`p-3 rounded-lg text-left transition-all ${
-                    selectedModel === model.id
-                      ? 'bg-purple-600 border-2 border-purple-400'
-                      : 'bg-white/5 border-2 border-white/10 hover:bg-white/10'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-white font-medium">{model.name}</span>
-                    {model.uncensored && (
-                      <span className="text-xs bg-red-500 text-white px-2 py-0.5 rounded">
-                        🔥 Uncensored
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-300">{model.description}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Image Generation Panel */}
       {showImageGen && (
@@ -633,19 +566,19 @@ const Chat = () => {
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4">
-        <div className="max-w-3xl mx-auto space-y-6">
+      <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-3 sm:py-4">
+        <div className="max-w-3xl mx-auto space-y-4 sm:space-y-6">
           {messages.map((message, index) => (
             <div
               key={`${message.id}-${index}`}
-              className={`flex gap-3 group ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
+              className={`flex gap-2 sm:gap-3 group ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
             >
               {message.role === 'assistant' ? (
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0 text-white font-semibold text-sm">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0 text-white font-semibold text-xs sm:text-sm">
                   {personaName.charAt(0)}
                 </div>
               ) : (
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center flex-shrink-0 text-white font-semibold text-sm overflow-hidden">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center flex-shrink-0 text-white font-semibold text-xs sm:text-sm overflow-hidden">
                   {user?.photoURL ? (
                     <img src={user.photoURL} alt="User" className="w-full h-full object-cover" />
                   ) : (
@@ -653,9 +586,9 @@ const Chat = () => {
                   )}
                 </div>
               )}
-              <div className="flex-1 max-w-[85%]">
+              <div className="flex-1 max-w-[90%] sm:max-w-[85%]">
                 <div
-                  className={`rounded-2xl px-4 py-3 text-sm ${
+                  className={`rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm ${
                     message.role === 'user'
                       ? 'bg-[#2a2a2a] text-white'
                       : 'bg-[#1f1f1f] text-white/90'
@@ -863,20 +796,20 @@ const Chat = () => {
 
       {/* Input */}
       <div className="border-t border-white/5 bg-[#0f0f0f] sticky bottom-0">
-        <div className="px-4 py-4 max-w-3xl mx-auto">
-          <div className="flex gap-3 items-end">
-            <div className="flex-1 bg-[#1a1a1a] border border-white/10 rounded-2xl flex items-center gap-2 px-4 py-2 focus-within:border-white/20 transition-all">
+        <div className="px-3 sm:px-4 py-3 sm:py-4 max-w-3xl mx-auto">
+          <div className="flex gap-2 sm:gap-3 items-end">
+            <div className="flex-1 bg-[#1a1a1a] border border-white/10 rounded-2xl flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 focus-within:border-white/20 transition-all">
               <textarea
                 value={messageInput}
                 onChange={(e) => setMessageInput(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder={`Message ${personaName}...`}
-                className="flex-1 bg-transparent text-white text-sm placeholder-white/40 resize-none py-2 outline-none max-h-32"
+                className="flex-1 bg-transparent text-white text-xs sm:text-sm placeholder-white/40 resize-none py-2 outline-none max-h-32"
                 rows={1}
               />
               <button
                 onClick={() => setShowImageGen(!showImageGen)}
-                className="p-1.5 hover:bg-white/5 rounded-lg transition-all text-white/40 hover:text-white/60"
+                className="p-1 sm:p-1.5 hover:bg-white/5 rounded-lg transition-all text-white/40 hover:text-white/60 hidden sm:block"
                 title="Generate image"
               >
                 <ImageIcon size={18} />
@@ -901,21 +834,22 @@ const Chat = () => {
       </div>
 
       {/* Right Sidebar - Persona Info */}
-      {showPersonaInfo && (
-        <PersonaInfoSidebar
-          personaName={personaName}
-          personaSummary={personaSummary || 'A unique AI personality ready to chat with you.'}
-          onNewChat={() => {
-            setMessages([]);
-            setCurrentConversationId(null);
-            setConversationTitle('');
-            // Clear the conversation query param and stay on the same persona
-            window.history.replaceState({}, '', `/chat?persona=${personaName}`);
-            // Trigger persona reload to get greeting
-            loadPersona();
-          }}
-        />
-      )}
+      <PersonaInfoSidebar
+        personaName={personaName}
+        personaSummary={personaSummary || 'A unique AI personality ready to chat with you.'}
+        isOpen={showPersonaInfo}
+        onClose={() => setShowPersonaInfo(false)}
+        onNewChat={() => {
+          setMessages([]);
+          setCurrentConversationId(null);
+          setConversationTitle('');
+          setShowPersonaInfo(false);
+          // Clear the conversation query param and stay on the same persona
+          window.history.replaceState({}, '', `/chat?persona=${personaName}`);
+          // Trigger persona reload to get greeting
+          loadPersona();
+        }}
+      />
 
       {/* Share Chat Modal */}
       <ShareChatModal

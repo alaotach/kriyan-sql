@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Menu, TrendingUp, Sparkles, Crown, Star } from 'lucide-react';
+import { Search, Menu, TrendingUp, Sparkles } from 'lucide-react';
 import PersonaCard from '../components/PersonaCard';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
@@ -28,6 +28,7 @@ const Home = () => {
   const [showKeyManagement, setShowKeyManagement] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showPersonaCreator, setShowPersonaCreator] = useState(false);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
 
   useEffect(() => {
     fetchPersonas();
@@ -124,8 +125,8 @@ const Home = () => {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
         <header className="border-b border-white/10 bg-[#0f0f0f]">
-          <div className="px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-2 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               <button
                 onClick={() => setSidebarOpen(true)}
                 className="lg:hidden p-2 hover:bg-white/5 rounded-lg transition-colors"
@@ -134,11 +135,11 @@ const Home = () => {
               </button>
               <div className="flex items-center gap-2">
                 <Sparkles size={24} className="text-purple-400" />
-                <h1 className="text-xl font-bold text-white">Kriyan AI</h1>
+                <h1 className="text-lg sm:text-xl font-bold text-white">Kriyan AI</h1>
               </div>
             </div>
             {/* Search Bar */}
-            <div className="relative w-full max-w-xl">
+            <div className="relative w-full max-w-xl hidden sm:block">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/30" size={18} />
               <input
                 type="text"
@@ -148,6 +149,13 @@ const Home = () => {
                 className="w-full pl-11 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/20 transition-all"
               />
             </div>
+            {/* Mobile Search Icon */}
+            <button 
+              onClick={() => setShowMobileSearch(true)}
+              className="sm:hidden p-2 hover:bg-white/5 rounded-lg transition-colors"
+            >
+              <Search size={20} className="text-white/70" />
+            </button>
           </div>
         </header>
 
@@ -155,13 +163,13 @@ const Home = () => {
         <div className="flex-1 overflow-y-auto">
           {/* Category Filters */}
           <div className="border-b border-white/10 sticky top-0 z-10 bg-[#0f0f0f]/95 backdrop-blur-xl">
-            <div className="px-6 py-3">
+            <div className="px-3 sm:px-6 py-2 sm:py-3">
               <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
                 {categories.map((category) => (
                   <button
                     key={category}
                     onClick={() => setSelectedCategory(category)}
-                    className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+                    className={`px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
                       selectedCategory === category
                         ? 'bg-white/10 text-white'
                         : 'text-white/50 hover:text-white/70 hover:bg-white/5'
@@ -175,21 +183,21 @@ const Home = () => {
           </div>
 
           {/* Personas Grid */}
-          <div className="px-6 py-6 max-w-7xl mx-auto space-y-8">
+          <div className="px-3 sm:px-4 md:px-6 py-4 sm:py-6 max-w-7xl mx-auto space-y-6 sm:space-y-8">
             {filteredPersonas.length === 0 ? (
-              <div className="text-center py-20">
-                <div className="text-5xl mb-4 opacity-30">🔍</div>
-                <h3 className="text-lg font-semibold text-white/70 mb-2">No personas found</h3>
-                <p className="text-white/40 text-sm">Try adjusting your search or filter</p>
+              <div className="text-center py-12 sm:py-20">
+                <div className="text-4xl sm:text-5xl mb-4 opacity-30">🔍</div>
+                <h3 className="text-base sm:text-lg font-semibold text-white/70 mb-2">No personas found</h3>
+                <p className="text-white/40 text-xs sm:text-sm">Try adjusting your search or filter</p>
               </div>
             ) : (
               <>
                 {/* Trending Section - Only show on All category with horizontal scroll */}
                 {selectedCategory === 'All' && personas.length > 0 && (
                   <section className="relative">
-                    <div className="flex items-center gap-2 mb-4">
-                      <TrendingUp className="text-purple-400" size={20} />
-                      <h2 className="text-xl font-semibold text-white">Trending Now</h2>
+                    <div className="flex items-center gap-2 mb-3 sm:mb-4">
+                      <TrendingUp className="text-purple-400" size={18} />
+                      <h2 className="text-lg sm:text-xl font-semibold text-white">Trending Now</h2>
                     </div>
                     <div className="relative">
                       {/* Left scroll indicator */}
@@ -247,11 +255,11 @@ const Home = () => {
 
                 {/* For You Section */}
                 <section>
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-semibold text-white">For you</h2>
-                    <span className="text-white/40 text-sm">{filteredPersonas.length} personas</span>
+                  <div className="flex items-center justify-between mb-3 sm:mb-4">
+                    <h2 className="text-lg sm:text-xl font-semibold text-white">For you</h2>
+                    <span className="text-white/40 text-xs sm:text-sm">{filteredPersonas.length} personas</span>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3">
                     {filteredPersonas.map((persona) => (
                       <PersonaCard
                         key={persona.name}
@@ -267,9 +275,9 @@ const Home = () => {
                 {/* Featured Section - horizontal scroll */}
                 {selectedCategory === 'All' && personas.length > 8 && (
                   <section className="relative">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Sparkles className="text-pink-400" size={20} />
-                      <h2 className="text-xl font-semibold text-white">Featured</h2>
+                    <div className="flex items-center gap-2 mb-3 sm:mb-4">
+                      <Sparkles className="text-pink-400" size={18} />
+                      <h2 className="text-lg sm:text-xl font-semibold text-white">Featured</h2>
                     </div>
                     <div className="relative group">
                       {/* Left scroll indicator */}
@@ -330,11 +338,11 @@ const Home = () => {
         {/* Floating Create Persona Button */}
         <button
           onClick={() => setShowPersonaCreator(true)}
-          className="fixed bottom-6 right-6 p-4 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-full shadow-2xl transition-all hover:scale-110 z-50 flex items-center gap-2 group"
+          className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 p-3 sm:p-4 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-full shadow-2xl transition-all hover:scale-110 z-50 flex items-center gap-2 group"
           title="Create Persona"
         >
-          <Sparkles size={24} className="text-white" />
-          <span className="text-white font-medium pr-1 max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 whitespace-nowrap">
+          <Sparkles size={20} className="text-white sm:w-6 sm:h-6" />
+          <span className="text-white font-medium pr-1 max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 whitespace-nowrap hidden sm:inline">
             Create Persona
           </span>
         </button>
@@ -342,6 +350,33 @@ const Home = () => {
 
       {/* Persona Creator Modal */}
       {showPersonaCreator && <PersonaCreatorModal onClose={() => setShowPersonaCreator(false)} />}
+
+      {/* Mobile Search Modal */}
+      {showMobileSearch && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-start justify-center p-4 sm:hidden">
+          <div className="w-full max-w-lg mt-20">
+            <div className="bg-[#1a1a1a] rounded-2xl border border-white/10 p-4">
+              <div className="relative mb-4">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/30" size={18} />
+                <input
+                  type="text"
+                  placeholder="Search personas..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  autoFocus
+                  className="w-full pl-11 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/20 transition-all"
+                />
+              </div>
+              <button
+                onClick={() => setShowMobileSearch(false)}
+                className="w-full py-2.5 bg-white/10 hover:bg-white/15 text-white rounded-xl transition-all text-sm font-medium"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

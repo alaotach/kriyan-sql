@@ -7,13 +7,10 @@ import {
   MessageCircle,
   Mic,
   History,
-  Palette,
   Pin,
   User,
-  Wand2,
   ChevronRight,
   ChevronLeft,
-  Clock,
   Trash2,
   Sparkles,
   Users
@@ -25,6 +22,8 @@ interface PersonaInfoSidebarProps {
   personaName: string;
   personaSummary: string;
   onNewChat?: () => void;
+  isOpen: boolean;
+  onClose: () => void;
 }
 
 interface Conversation {
@@ -38,7 +37,9 @@ interface Conversation {
 export const PersonaInfoSidebar = ({ 
   personaName, 
   personaSummary,
-  onNewChat 
+  onNewChat,
+  isOpen,
+  onClose
 }: PersonaInfoSidebarProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -47,9 +48,7 @@ export const PersonaInfoSidebar = ({
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [showVoiceSettings, setShowVoiceSettings] = useState(false);
-  const [showCustomize, setShowCustomize] = useState(false);
   const [showPersonaPicker, setShowPersonaPicker] = useState(false);
-  const [showStyleSettings, setShowStyleSettings] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   
   const tags = [
@@ -63,10 +62,8 @@ export const PersonaInfoSidebar = ({
   const options = [
     { icon: MessageCircle, label: 'New chat', action: onNewChat },
     { icon: Mic, label: 'Voice', subtitle: 'Default', action: () => setShowVoiceSettings(true) },
-    { icon: Palette, label: 'Customize', action: () => setShowCustomize(true) },
     { icon: Pin, label: 'Pinned', action: () => {} },
     { icon: User, label: 'Persona', action: () => setShowPersonaPicker(true) },
-    { icon: Wand2, label: 'Style', action: () => setShowStyleSettings(true) },
   ];
 
   useEffect(() => {
@@ -139,14 +136,26 @@ export const PersonaInfoSidebar = ({
   };
 
   return (
-    <aside className="w-[320px] bg-[#0f0f0f] border-l border-white/10 overflow-y-auto">
+    <>
+      {/* Mobile Overlay */}
+      {isOpen && (
+        <div
+          onClick={onClose}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside className={`fixed lg:static inset-y-0 right-0 z-50 w-[280px] sm:w-[320px] bg-[#0f0f0f] border-l border-white/10 overflow-y-auto flex-shrink-0 transition-transform duration-300 lg:translate-x-0 ${
+        isOpen ? 'translate-x-0' : 'translate-x-full'
+      }`}>
       {/* Persona Header */}
-      <div className="p-6 border-b border-white/10 flex-shrink-0">
-        <div className="flex flex-col items-center text-center mb-4">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-3xl mb-3">
+      <div className="p-4 sm:p-6 border-b border-white/10 flex-shrink-0">
+        <div className="flex flex-col items-center text-center mb-3 sm:mb-4">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-2xl sm:text-3xl mb-2 sm:mb-3">
             {personaName.charAt(0)}
           </div>
-          <h2 className="text-lg font-semibold text-white mb-1">
+          <h2 className="text-base sm:text-lg font-semibold text-white mb-1">
             {personaName}
           </h2>
           <p className="text-sm text-white/50 mb-1">By @creator</p>
@@ -158,26 +167,26 @@ export const PersonaInfoSidebar = ({
 
         {/* Action Buttons */}
         <div className="flex items-center justify-center gap-2">
-          <button className="p-2 hover:bg-white/5 rounded-lg transition-colors">
-            <Share2 size={18} className="text-white/60" />
+          <button className="p-1.5 sm:p-2 hover:bg-white/5 rounded-lg transition-colors">
+            <Share2 size={16} className="sm:w-[18px] sm:h-[18px] text-white/60" />
           </button>
-          <button className="p-2 hover:bg-white/5 rounded-lg transition-colors">
-            <Heart size={18} className="text-white/60" />
+          <button className="p-1.5 sm:p-2 hover:bg-white/5 rounded-lg transition-colors">
+            <Heart size={16} className="sm:w-[18px] sm:h-[18px] text-white/60" />
           </button>
-          <button className="p-2 hover:bg-white/5 rounded-lg transition-colors">
-            <Bookmark size={18} className="text-white/60" />
+          <button className="p-1.5 sm:p-2 hover:bg-white/5 rounded-lg transition-colors">
+            <Bookmark size={16} className="sm:w-[18px] sm:h-[18px] text-white/60" />
           </button>
         </div>
       </div>
 
       {/* Tags */}
-      <div className="p-6 border-b border-white/10 flex-shrink-0">
-        <h3 className="text-xs font-medium text-white/40 mb-3">About</h3>
-        <div className="flex flex-wrap gap-2">
+      <div className="p-4 sm:p-6 border-b border-white/10 flex-shrink-0">
+        <h3 className="text-xs font-medium text-white/40 mb-2 sm:mb-3">About</h3>
+        <div className="flex flex-wrap gap-1.5 sm:gap-2">
           {tags.map((tag, index) => (
             <span
               key={index}
-              className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-xs text-white/70"
+              className="px-2 sm:px-3 py-0.5 sm:py-1 bg-white/5 border border-white/10 rounded-full text-[10px] sm:text-xs text-white/70"
             >
               {tag}
             </span>
@@ -186,19 +195,19 @@ export const PersonaInfoSidebar = ({
       </div>
 
       {/* Options List */}
-      <div className="p-4 border-b border-white/10 flex-shrink-0">
+      <div className="p-3 sm:p-4 border-b border-white/10 flex-shrink-0">
         {options.map((option, index) => {
           const Icon = option.icon;
           return (
             <button
               key={index}
               onClick={option.action}
-              className="w-full flex items-center justify-between px-3 py-3 hover:bg-white/5 rounded-lg transition-all group"
+              className="w-full flex items-center justify-between px-2 sm:px-3 py-2 sm:py-3 hover:bg-white/5 rounded-lg transition-all group"
             >
-              <div className="flex items-center gap-3">
-                <Icon size={18} className="text-white/60" />
+              <div className="flex items-center gap-2 sm:gap-3">
+                <Icon size={16} className="sm:w-[18px] sm:h-[18px] text-white/60" />
                 <div className="text-left">
-                  <div className="text-sm text-white">{option.label}</div>
+                  <div className="text-xs sm:text-sm text-white">{option.label}</div>
                   {option.subtitle && (
                     <div className="text-xs text-white/40">{option.subtitle}</div>
                   )}
@@ -215,10 +224,10 @@ export const PersonaInfoSidebar = ({
 
       {/* Chat History Section */}
       <div className="flex-shrink-0">
-        <div className="p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <History size={16} className="text-white/40" />
-            <h3 className="text-xs font-medium text-white/40">Chat History</h3>
+        <div className="p-3 sm:p-4">
+          <div className="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
+            <History size={14} className="sm:w-4 sm:h-4 text-white/40" />
+            <h3 className="text-[10px] sm:text-xs font-medium text-white/40">Chat History</h3>
           </div>
           
           {loadingHistory ? (
@@ -273,10 +282,10 @@ export const PersonaInfoSidebar = ({
 
       {/* Voice Settings Modal */}
       {showVoiceSettings && (
-        <div className="fixed inset-y-0 right-0 w-[320px] bg-[#0f0f0f] z-[100] p-4 overflow-y-auto border-l border-white/10">
+        <div className="fixed inset-0 lg:inset-y-0 lg:right-0 w-full lg:w-[320px] bg-[#0f0f0f] z-[100] p-4 overflow-y-auto border-l border-white/10">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-              <Mic size={20} className="text-purple-400" />
+            <h3 className="text-base sm:text-lg font-semibold text-white flex items-center gap-2">
+              <Mic size={18} className="sm:w-5 sm:h-5 text-purple-400" />
               Voice Settings
             </h3>
             <button
@@ -333,78 +342,12 @@ export const PersonaInfoSidebar = ({
         </div>
       )}
 
-      {/* Customize Settings Modal */}
-      {showCustomize && (
-        <div className="fixed inset-y-0 right-0 w-[320px] bg-[#0f0f0f] z-[100] p-4 overflow-y-auto border-l border-white/10">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-              <Wand2 size={20} className="text-purple-400" />
-              Customize Chat
-            </h3>
-            <button
-              onClick={() => setShowCustomize(false)}
-              className="p-2 hover:bg-white/5 rounded-lg transition-colors"
-            >
-              <ChevronLeft size={20} className="text-white/60" />
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            <div className="p-4 bg-white/5 rounded-xl border border-white/10">
-              <label className="text-sm font-medium text-white block mb-2">Font Size</label>
-              <select className="w-full bg-[#1a1a1a] border border-white/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500">
-                <option className="bg-[#1a1a1a] text-white">Small</option>
-                <option className="bg-[#1a1a1a] text-white">Medium (Default)</option>
-                <option className="bg-[#1a1a1a] text-white">Large</option>
-                <option className="bg-[#1a1a1a] text-white">Extra Large</option>
-              </select>
-            </div>
-
-            <div className="p-4 bg-white/5 rounded-xl border border-white/10">
-              <label className="text-sm font-medium text-white block mb-2">Message Density</label>
-              <select className="w-full bg-[#1a1a1a] border border-white/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500">
-                <option className="bg-[#1a1a1a] text-white">Compact</option>
-                <option className="bg-[#1a1a1a] text-white">Comfortable (Default)</option>
-                <option className="bg-[#1a1a1a] text-white">Spacious</option>
-              </select>
-            </div>
-
-            <div className="p-4 bg-white/5 rounded-xl border border-white/10">
-              <label className="text-sm font-medium text-white block mb-2">Code Highlighting</label>
-              <select className="w-full bg-[#1a1a1a] border border-white/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500">
-                <option className="bg-[#1a1a1a] text-white">Auto-detect</option>
-                <option className="bg-[#1a1a1a] text-white">Always on</option>
-                <option className="bg-[#1a1a1a] text-white">Off</option>
-              </select>
-            </div>
-
-            <div className="p-4 bg-white/5 rounded-xl border border-white/10">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-white">Show Timestamps</label>
-                <button className="relative w-12 h-6 rounded-full bg-purple-500">
-                  <div className="absolute top-1 left-7 w-4 h-4 bg-white rounded-full" />
-                </button>
-              </div>
-            </div>
-
-            <div className="p-4 bg-white/5 rounded-xl border border-white/10">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-white">Markdown Preview</label>
-                <button className="relative w-12 h-6 rounded-full bg-purple-500">
-                  <div className="absolute top-1 left-7 w-4 h-4 bg-white rounded-full" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Persona Quick Picker Modal */}
       {showPersonaPicker && (
-        <div className="fixed inset-y-0 right-0 w-[320px] bg-[#0f0f0f] z-[100] p-4 overflow-y-auto border-l border-white/10">
+        <div className="fixed inset-0 lg:inset-y-0 lg:right-0 w-full lg:w-[320px] bg-[#0f0f0f] z-[100] p-4 overflow-y-auto border-l border-white/10">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-              <Users size={20} className="text-purple-400" />
+            <h3 className="text-base sm:text-lg font-semibold text-white flex items-center gap-2">
+              <Users size={18} className="sm:w-5 sm:h-5 text-purple-400" />
               Switch Persona
             </h3>
             <button
@@ -452,81 +395,7 @@ export const PersonaInfoSidebar = ({
           </button>
         </div>
       )}
-
-      {/* Style/Theme Settings Modal */}
-      {showStyleSettings && (
-        <div className="fixed inset-y-0 right-0 w-[320px] bg-[#0f0f0f] z-[100] p-4 overflow-y-auto border-l border-white/10">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-              <Palette size={20} className="text-purple-400" />
-              Style & Theme
-            </h3>
-            <button
-              onClick={() => setShowStyleSettings(false)}
-              className="p-2 hover:bg-white/5 rounded-lg transition-colors"
-            >
-              <ChevronLeft size={20} className="text-white/60" />
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            <div className="p-4 bg-white/5 rounded-xl border border-white/10">
-              <label className="text-sm font-medium text-white block mb-3">Theme</label>
-              <div className="grid grid-cols-2 gap-2">
-                <button className="p-3 bg-black border-2 border-purple-500 rounded-lg text-white text-sm font-medium">
-                  Dark
-                </button>
-                <button className="p-3 bg-white border border-white/20 rounded-lg text-black text-sm font-medium">
-                  Light
-                </button>
-                <button className="p-3 bg-gradient-to-br from-gray-900 to-gray-800 border border-white/20 rounded-lg text-white text-sm font-medium">
-                  System
-                </button>
-                <button className="p-3 bg-gradient-to-br from-blue-900 to-purple-900 border border-white/20 rounded-lg text-white text-sm font-medium">
-                  Midnight
-                </button>
-              </div>
-            </div>
-
-            <div className="p-4 bg-white/5 rounded-xl border border-white/10">
-              <label className="text-sm font-medium text-white block mb-3">Accent Color</label>
-              <div className="grid grid-cols-6 gap-2">
-                {['#a855f7', '#ec4899', '#f43f5e', '#3b82f6', '#10b981', '#f59e0b'].map((color) => (
-                  <button
-                    key={color}
-                    className="w-10 h-10 rounded-lg border-2 border-white/20 hover:border-white/40 transition-colors"
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="p-4 bg-white/5 rounded-xl border border-white/10">
-              <label className="text-sm font-medium text-white block mb-2">Background Blur</label>
-              <input type="range" min="0" max="20" step="1" defaultValue="10" className="w-full" />
-            </div>
-
-            <div className="p-4 bg-white/5 rounded-xl border border-white/10">
-              <label className="text-sm font-medium text-white block mb-2">Animation Speed</label>
-              <select className="w-full bg-[#1a1a1a] border border-white/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500">
-                <option className="bg-[#1a1a1a] text-white">Off</option>
-                <option className="bg-[#1a1a1a] text-white">Slow</option>
-                <option className="bg-[#1a1a1a] text-white">Normal (Default)</option>
-                <option className="bg-[#1a1a1a] text-white">Fast</option>
-              </select>
-            </div>
-
-            <div className="p-4 bg-white/5 rounded-xl border border-white/10">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-white">Reduce Motion</label>
-                <button className="relative w-12 h-6 rounded-full bg-white/20">
-                  <div className="absolute top-1 left-1 w-4 h-4 bg-white rounded-full" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </aside>
+    </>
   );
 };

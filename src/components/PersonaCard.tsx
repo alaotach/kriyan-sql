@@ -34,34 +34,34 @@ const PersonaCard = ({ name, summary, category, onClick }: PersonaCardProps) => 
   return (
     <div
       onClick={onClick}
-      className="group relative bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.05] hover:border-white/10 rounded-2xl p-5 cursor-pointer transition-all duration-200"
+      className="group relative bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.05] hover:border-white/10 rounded-xl sm:rounded-2xl p-3 sm:p-4 md:p-5 cursor-pointer transition-all duration-200"
     >
       <div className="relative z-10">
         {/* Header */}
-        <div className="flex items-start gap-3 mb-3">
-          <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-2xl flex-shrink-0">
+        <div className="flex items-start gap-2 sm:gap-3 mb-2 sm:mb-3">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-white/5 flex items-center justify-center text-xl sm:text-2xl flex-shrink-0">
             {emoji}
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-white text-base mb-0.5 truncate">
+            <h3 className="font-semibold text-white text-sm sm:text-base mb-0.5 truncate">
               {name}
             </h3>
-            <span className="text-xs text-white/30 font-medium">By @creator</span>
+            <span className="text-[10px] sm:text-xs text-white/30 font-medium">By @creator</span>
           </div>
         </div>
 
         {/* Summary */}
-        <p className="text-sm text-white/60 line-clamp-2 mb-4 leading-relaxed">
+        <p className="text-xs sm:text-sm text-white/60 line-clamp-2 mb-3 sm:mb-4 leading-relaxed">
           {summary}
         </p>
 
         {/* Footer */}
-        <div className="flex items-center justify-between text-xs text-white/40">
-          <div className="flex items-center gap-1.5">
-            <MessageCircle size={14} />
+        <div className="flex items-center justify-between text-[10px] sm:text-xs text-white/40">
+          <div className="flex items-center gap-1 sm:gap-1.5">
+            <MessageCircle size={12} className="sm:w-3.5 sm:h-3.5" />
             <span>Chat</span>
           </div>
-          <span className="px-2 py-0.5 bg-white/5 rounded-md text-white/50">{category}</span>
+          <span className="px-1.5 sm:px-2 py-0.5 bg-white/5 rounded-md text-white/50">{category}</span>
         </div>
       </div>
     </div>
