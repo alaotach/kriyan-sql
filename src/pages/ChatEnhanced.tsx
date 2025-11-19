@@ -67,7 +67,9 @@ const Chat = () => {
   const [conversationTitle, setConversationTitle] = useState('');
   const [processedSharedId, setProcessedSharedId] = useState<string | null>(null);
   const [existingShareId, setExistingShareId] = useState<string>('');
+  const [isSaving, setIsSaving] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const synth = typeof window !== 'undefined' ? window.speechSynthesis : null;
 
   useEffect(() => {
@@ -145,13 +147,15 @@ const Chat = () => {
 
   useEffect(() => {
     // Auto-save conversation every 30 seconds if user is logged in
-    if (user && messages.length > 0) {
+    if (user) {
       const interval = setInterval(() => {
-        saveCurrentConversation();
+        if (messages.length > 0) {
+          saveCurrentConversation();
+        }
       }, 30000);
       return () => clearInterval(interval);
     }
-  }, [user, messages]);
+  }, [user]); // Only depend on user, not messages
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -208,6 +212,7 @@ const Chat = () => {
 
   const saveCurrentConversation = async (messagesToSave?: Message[]) => {
     if (!user) return;
+    if (isSaving) return; // Prevent concurrent saves
     
     const msgsToSave = messagesToSave || messages;
     if (msgsToSave.length === 0) return;
@@ -223,6 +228,7 @@ const Chat = () => {
     // A real conversation has: user message + assistant response (at least 2 messages total with 1 user)
     if (msgsToSave.length < 2 || assistantResponses.length === 0) return;
 
+    setIsSaving(true);
     try {
       // Generate AI title ONLY for NEW conversations (when there's no conversation ID yet)
       // For existing conversations, reuse the existing title to avoid API spam
@@ -284,6 +290,8 @@ const Chat = () => {
       }
     } catch (error) {
       console.error('Failed to save conversation:', error);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -328,7 +336,8 @@ const Chat = () => {
       
       // Auto-save immediately after bot responds (now we have both user and assistant messages)
       if (user) {
-        setTimeout(() => saveCurrentConversation(updatedMessages), 500);
+        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = setTimeout(() => saveCurrentConversation(updatedMessages), 1000);
       }
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -343,7 +352,8 @@ const Chat = () => {
       
       // Save even when there's an error so the conversation isn't lost
       if (user) {
-        setTimeout(() => saveCurrentConversation(updatedMessages), 500);
+        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = setTimeout(() => saveCurrentConversation(updatedMessages), 1000);
       }
     } finally {
       setIsTyping(false);
@@ -385,7 +395,8 @@ const Chat = () => {
       
       // Auto-save after regeneration
       if (user) {
-        setTimeout(() => saveCurrentConversation(updatedMessages), 500);
+        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = setTimeout(() => saveCurrentConversation(updatedMessages), 1000);
       }
     } catch (error) {
       console.error('Failed to regenerate:', error);
@@ -629,9 +640,17 @@ const Chat = () => {
               key={`${message.id}-${index}`}
               className={`flex gap-3 group ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
             >
-              {message.role === 'assistant' && (
+              {message.role === 'assistant' ? (
                 <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0 text-white font-semibold text-sm">
                   {personaName.charAt(0)}
+                </div>
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center flex-shrink-0 text-white font-semibold text-sm overflow-hidden">
+                  {user?.photoURL ? (
+                    <img src={user.photoURL} alt="User" className="w-full h-full object-cover" />
+                  ) : (
+                    <span>{user?.displayName?.charAt(0) || user?.email?.charAt(0) || 'U'}</span>
+                  )}
                 </div>
               )}
               <div className="flex-1 max-w-[85%]">
@@ -676,7 +695,7 @@ const Chat = () => {
                           let currentText = '';
 
                           while (i < text.length) {
-                            // Check for <em> (actions/narration)
+                            // Check for <em> (actions/narration from AI)
                             if (text.substring(i, i + 4) === '<em>') {
                               if (currentText) {
                                 parts.push(currentText);
@@ -699,6 +718,40 @@ const Chat = () => {
                               if (closeIndex !== -1) {
                                 currentText += text.substring(i + 8, closeIndex);
                                 i = closeIndex + 9;
+                                continue;
+                              }
+                            }
+                            // Parse **bold** from user messages
+                            else if (text.substring(i, i + 2) === '**' && message.role === 'user') {
+                              if (currentText) {
+                                parts.push(currentText);
+                                currentText = '';
+                              }
+                              const closeIndex = text.indexOf('**', i + 2);
+                              if (closeIndex !== -1 && closeIndex > i + 2) {
+                                parts.push(
+                                  <strong key={`b-${key++}`} className="font-bold">
+                                    {text.substring(i + 2, closeIndex)}
+                                  </strong>
+                                );
+                                i = closeIndex + 2;
+                                continue;
+                              }
+                            }
+                            // Parse *italic* from user messages
+                            else if (text[i] === '*' && text[i + 1] !== '*' && message.role === 'user') {
+                              if (currentText) {
+                                parts.push(currentText);
+                                currentText = '';
+                              }
+                              const closeIndex = text.indexOf('*', i + 1);
+                              if (closeIndex !== -1 && closeIndex > i + 1 && text[closeIndex + 1] !== '*') {
+                                parts.push(
+                                  <em key={`i-${key++}`} className="italic text-purple-400">
+                                    {text.substring(i + 1, closeIndex)}
+                                  </em>
+                                );
+                                i = closeIndex + 1;
                                 continue;
                               }
                             }

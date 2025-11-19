@@ -31,6 +31,7 @@ export interface ChatRequest {
   history?: Array<{ role: string; content: string }>;
   model?: string;
   temperature?: number;
+  user_memories?: string[];
 }
 
 export interface ChatResponse {
@@ -227,6 +228,23 @@ export const api = {
     const response = await fetch(`${API_BASE_URL}/chat/share/${shareId}/check/${encodeURIComponent(userId)}`);
     if (!response.ok) {
       throw new Error(`Failed to check conversation: ${response.status}`);
+    }
+    return response.json();
+  },
+
+  async extractMemories(
+    messages: Array<{ role: string; content: string }>,
+    existingMemories: string[]
+  ): Promise<{ memories: string[] }> {
+    const response = await fetch(`${API_BASE_URL}/extract-memories`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ messages, existing_memories: existingMemories }),
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to extract memories: ${response.status}`);
     }
     return response.json();
   },

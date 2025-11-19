@@ -42,10 +42,10 @@ app.add_middleware(
 # ============ MODELS CONFIGURATION ============
 # Using g4f (GPT4Free) - 100% FREE, no API keys needed!
 AVAILABLE_MODELS = {
-    "gpt-4": {
+    "command-r24": {
         "name": "GPT-4 (Free via g4f)",
         "provider": "g4f",
-        "model_id": "gpt-4",
+        "model_id": "command-r24",
         "uncensored": True,
         "description": "Most powerful model, completely free"
     },
@@ -183,7 +183,7 @@ def convert_asterisks_to_html(text: str) -> str:
     return text
 
 # ============ AI GENERATION ============
-async def generate_with_hackclub(messages: List[Dict], temperature: float = 0.7) -> str:
+async def generate_with_hackclub(messages: List[Dict], temperature: float = 1.2) -> str:
     """Generate response using HackClub API"""
     try:
         async with httpx.AsyncClient() as client:
@@ -196,7 +196,9 @@ async def generate_with_hackclub(messages: List[Dict], temperature: float = 0.7)
                 json={
                     "model": "qwen/qwen3-32b",
                     "messages": messages,
-                    "temperature": temperature
+                    "temperature": temperature,
+                    "frequency_penalty": 0.6,
+                    "presence_penalty": 0.4
                 },
                 timeout=60.0
             )
@@ -205,7 +207,7 @@ async def generate_with_hackclub(messages: List[Dict], temperature: float = 0.7)
             return data['choices'][0]['message']['content']
     except Exception as e:
         print(f"HackClub API error: {e}, falling back to g4f")
-        return await generate_with_g4f("gpt-4", messages, temperature)
+        return await generate_with_g4f("command-r24", messages, temperature)
 
 async def generate_with_g4f(model_id: str, messages: List[Dict], temperature: float = 0.7) -> str:
     """Generate response using g4f (GPT4Free) - 100% FREE!"""
@@ -217,9 +219,11 @@ async def generate_with_g4f(model_id: str, messages: List[Dict], temperature: fl
         response = await loop.run_in_executor(
             None,
             lambda: g4f_client.chat.completions.create(
-                model="gpt-4",
+                model="command-r24",
                 messages=messages,
-                temperature=temperature
+                temperature=temperature,
+                frequency_penalty=0.6,
+                presence_penalty=0.4
             )
         )
         
@@ -227,7 +231,7 @@ async def generate_with_g4f(model_id: str, messages: List[Dict], temperature: fl
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"g4f error: {str(e)}")
 
-async def generate_response(persona: str, message: str, history: List[Dict], model: str = DEFAULT_MODEL) -> str:
+async def generate_response(persona: str, message: str, history: List[Dict], model: str = DEFAULT_MODEL, user_memories: List[str] = []) -> str:
     """Generate AI response with persona and chat history"""
     
     # Get model config
@@ -299,6 +303,13 @@ CURRENT DATE & TIME: {current_datetime}
         {"role": "system", "content": f"""YOU ARE THIS CHARACTER:
 
 {persona_instructions}"""},
+        
+        # Layer 2.3: User Memory Context (if provided)
+        *([{"role": "system", "content": f"""📝 WHAT YOU KNOW ABOUT THE USER:
+
+{chr(10).join(f"- {memory}" for memory in user_memories)}
+
+Use this information naturally in conversation when relevant. Don't explicitly state you remember things unless asked."""}] if user_memories else []),
         
         # Layer 2.5: CRITICAL GENDER INSTRUCTION (MUST FOLLOW)
         {"role": "system", "content": f"""⚠️ CRITICAL PRONOUN RULE - READ CAREFULLY:
@@ -489,6 +500,7 @@ class ChatRequest(BaseModel):
     history: List[Dict] = []
     model: Optional[str] = DEFAULT_MODEL
     temperature: Optional[float] = 0.7
+    user_memories: Optional[List[str]] = []  # User memories for context
 
 class ChatResponse(BaseModel):
     reply: str
@@ -564,12 +576,15 @@ async def chat(request: ChatRequest):
     try:
         print(f"🔵 Received chat request: persona={request.persona}, model={request.model}")
         print(f"🔵 Message: {request.message[:50]}...")
+        if request.user_memories:
+            print(f"🧠 User memories provided: {len(request.user_memories)} memories")
         
         reply = await generate_response(
             persona=request.persona,
             message=request.message,
             history=request.history,
-            model=request.model
+            model=request.model,
+            user_memories=request.user_memories or []
         )
         
         print(f"✅ Generated reply: {reply[:50]}...")
@@ -885,6 +900,81 @@ async def delete_shared_chat(share_id: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete shared chat: {str(e)}")
+
+# ============ MEMORY EXTRACTION ============
+class MemoryExtractionRequest(BaseModel):
+    messages: List[Dict]
+    existing_memories: List[str] = []
+
+class MemoryExtractionResponse(BaseModel):
+    memories: List[str]
+
+@app.post("/extract-memories", response_model=MemoryExtractionResponse)
+async def extract_memories(request: MemoryExtractionRequest):
+    """Analyze conversation and extract user information as memories"""
+    try:
+        # Create a prompt to extract user information
+        system_prompt = """You are a memory extraction assistant. Analyze the conversation and extract key information about the USER (not the AI character).
+
+Extract information about:
+- Personal details (name, age, location, occupation, etc.)
+- Relationships (family, friends, partner)
+- Preferences (likes, dislikes, hobbies, interests)
+- Work/Career information
+- Goals and aspirations
+- Personality traits
+- Past experiences they mention
+
+CRITICAL RULES:
+1. Extract ONLY factual information explicitly mentioned by the user
+2. Each memory should be a single, clear statement
+3. Keep memories concise (1-2 sentences max)
+4. DO NOT extract information about the AI character/persona
+5. DO NOT make assumptions or inferences
+6. If there's no new user information, return empty list
+
+Format each memory as a standalone statement, like:
+- "User's name is John and they are 25 years old"
+- "User works as a software engineer at Google"
+- "User has a younger sister named Sarah"
+- "User enjoys playing video games and coding"
+
+Existing memories (don't repeat these):
+""" + "\n".join(f"- {mem}" for mem in request.existing_memories)
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": "Extract memories from this conversation:\n\n" + "\n".join([
+                f"{msg['role']}: {msg['content']}" for msg in request.messages[-10:]  # Last 10 messages
+            ]) + "\n\nReturn ONLY new memories as a JSON array of strings. If no new info, return empty array []"}
+        ]
+        
+        # Use the AI to extract memories
+        if USE_HACKCLUB and HACKCLUB_API_KEY:
+            response = await generate_with_hackclub(messages, temperature=0.3)
+        else:
+            response = await generate_with_g4f("command-r24", messages, temperature=0.3)
+        
+        # Parse the response to extract memory list
+        try:
+            # Try to extract JSON array from response
+            import json
+            # Find JSON array in response
+            start_idx = response.find('[')
+            end_idx = response.rfind(']') + 1
+            if start_idx != -1 and end_idx > start_idx:
+                memories = json.loads(response[start_idx:end_idx])
+                if isinstance(memories, list):
+                    return MemoryExtractionResponse(memories=[m for m in memories if isinstance(m, str) and m.strip()])
+        except:
+            pass
+        
+        # Fallback: no memories extracted
+        return MemoryExtractionResponse(memories=[])
+        
+    except Exception as e:
+        print(f"Memory extraction error: {e}")
+        raise HTTPException(status_code=500, detail=f"Memory extraction failed: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

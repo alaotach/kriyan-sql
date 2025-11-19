@@ -324,3 +324,99 @@ export const uploadAvatar = async (userId: string, file: File) => {
     throw error;
   }
 };
+
+// ============ MEMORY MANAGEMENT ============
+export interface UserMemory {
+  id: string;
+  userId: string;
+  content: string; // The memory text
+  category?: string; // e.g., 'personal', 'work', 'relationships', 'preferences'
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export const saveUserMemory = async (userId: string, content: string, category?: string) => {
+  try {
+    const memoryData = {
+      userId,
+      content,
+      category: category || 'general',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+    
+    const docRef = await addDoc(collection(db, 'userMemories'), memoryData);
+    return docRef.id;
+  } catch (error) {
+    console.error('Error saving memory:', error);
+    throw error;
+  }
+};
+
+export const getUserMemories = async (userId: string): Promise<UserMemory[]> => {
+  try {
+    const q = query(
+      collection(db, 'userMemories'),
+      where('userId', '==', userId),
+      orderBy('updatedAt', 'desc')
+    );
+    
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate() || new Date(),
+      updatedAt: doc.data().updatedAt?.toDate() || new Date()
+    })) as UserMemory[];
+  } catch (error) {
+    console.error('Error getting memories:', error);
+    throw error;
+  }
+};
+
+export const deleteUserMemory = async (memoryId: string) => {
+  try {
+    await deleteDoc(doc(db, 'userMemories', memoryId));
+  } catch (error) {
+    console.error('Error deleting memory:', error);
+    throw error;
+  }
+};
+
+export const updateUserMemory = async (memoryId: string, content: string) => {
+  try {
+    await updateDoc(doc(db, 'userMemories', memoryId), {
+      content,
+      updatedAt: serverTimestamp()
+    });
+  } catch (error) {
+    console.error('Error updating memory:', error);
+    throw error;
+  }
+};
+
+// Memory settings
+export const getMemorySettings = async (userId: string): Promise<{ enabled: boolean }> => {
+  try {
+    const docRef = doc(db, 'userSettings', userId);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      return { enabled: docSnap.data().memoryEnabled || false };
+    }
+    return { enabled: false };
+  } catch (error) {
+    console.error('Error getting memory settings:', error);
+    return { enabled: false };
+  }
+};
+
+export const setMemorySettings = async (userId: string, enabled: boolean) => {
+  try {
+    const docRef = doc(db, 'userSettings', userId);
+    await setDoc(docRef, { memoryEnabled: enabled }, { merge: true });
+  } catch (error) {
+    console.error('Error setting memory settings:', error);
+    throw error;
+  }
+};

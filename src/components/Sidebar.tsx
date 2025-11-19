@@ -9,6 +9,7 @@ import {
   Settings,
   LogOut,
   Crown,
+  Brain,
   ChevronLeft,
   MessageCircle,
   Trash2,
@@ -20,6 +21,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getUserConversations, deleteConversation } from '../services/firebase';
+import { PersonaCreatorModal } from './PersonaCreatorModal';
+import { MemoryModal } from './MemoryModal';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -52,6 +55,10 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const [showStyleSettings, setShowStyleSettings] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [pinnedChats, setPinnedChats] = useState<Set<string>>(new Set());
+  const [showPersonaCreator, setShowPersonaCreator] = useState(false);
+  const [showMemory, setShowMemory] = useState(false);
+  const [showNewChatModal, setShowNewChatModal] = useState(false);
+  const [recentPersonas, setRecentPersonas] = useState<string[]>([]);
 
   useEffect(() => {
     loadConversations();
@@ -90,6 +97,12 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         .sort((a: any, b: any) => b.timestamp?.seconds - a.timestamp?.seconds);
       
       setConversations(sortedConversations as any);
+      
+      // Extract unique recent personas
+      const personas = Array.from(new Set(
+        sortedConversations.map((c: any) => c.personaName)
+      )).slice(0, 10);
+      setRecentPersonas(personas);
       
       // Load pinned chats from localStorage
       const saved = localStorage.getItem('pinnedChats');
@@ -260,7 +273,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           {/* Action Buttons */}
           <button
             onClick={() => {
-              navigate('/create');
+              setShowPersonaCreator(true);
               onClose();
             }}
             className="w-full flex items-center gap-3 px-4 py-2.5 bg-white/5 hover:bg-white/10 rounded-xl transition-all mb-2 text-white text-sm font-medium"
@@ -271,14 +284,13 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           
           <button
             onClick={() => {
-              // If we're in a chat, start a new chat with the same persona
-              // Otherwise, go to home to select a persona
+              // If in chat with a persona, start new chat with same persona
               if (currentPersona) {
-                navigate(`/chat?persona=${encodeURIComponent(currentPersona)}`);
+                window.location.href = `/chat?persona=${encodeURIComponent(currentPersona)}`;
               } else {
-                navigate('/');
+                // Otherwise show recent personas modal
+                setShowNewChatModal(true);
               }
-              onClose();
             }}
             className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 rounded-xl transition-all text-white/70 hover:text-white text-sm"
           >
@@ -382,7 +394,14 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
               {filteredConversations.filter(c => c.id && pinnedChats.has(c.id)).map((conv) => (
                 <button
                   key={conv.id}
-                  onClick={() => conv.id && navigate(`/chat?persona=${encodeURIComponent(conv.personaName)}&conversation=${conv.id}`)}
+                  onClick={() => {
+                    if (!conv.id) return;
+                    if (selectMode) {
+                      toggleChatSelection(conv.id);
+                    } else {
+                      navigate(`/chat?persona=${encodeURIComponent(conv.personaName)}&conversation=${conv.id}`);
+                    }
+                  }}
                   data-chat-id={conv.id}
                   className={`relative rounded-lg transition-all mb-1 group ${
                     selectMode && conv.id && selectedChats.has(conv.id)
@@ -429,7 +448,14 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
               {filteredConversations.filter(c => !c.id || !pinnedChats.has(c.id)).map((conv) => (
                 <button
                   key={conv.id}
-                  onClick={() => conv.id && navigate(`/chat?persona=${encodeURIComponent(conv.personaName)}&conversation=${conv.id}`)}
+                  onClick={() => {
+                    if (!conv.id) return;
+                    if (selectMode) {
+                      toggleChatSelection(conv.id);
+                    } else {
+                      navigate(`/chat?persona=${encodeURIComponent(conv.personaName)}&conversation=${conv.id}`);
+                    }
+                  }}
                   data-chat-id={conv.id}
                   className={`relative rounded-lg transition-all mb-1 group ${
                     selectMode && conv.id && selectedChats.has(conv.id)
@@ -518,6 +544,16 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
               >
                 <User size={16} />
                 Profile
+              </button>
+              <button
+                onClick={() => {
+                  setShowMemory(true);
+                  setShowUserMenu(false);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 transition-colors text-white text-sm"
+              >
+                <Brain size={16} />
+                Memory
               </button>
               <button
                 onClick={() => {
@@ -804,6 +840,71 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
             </div>
           </div>
         )}
+
+      {/* Modals */}
+      {showPersonaCreator && <PersonaCreatorModal onClose={() => setShowPersonaCreator(false)} />}
+      {showMemory && <MemoryModal onClose={() => setShowMemory(false)} />}
+      
+      {/* New Chat Modal */}
+      {showNewChatModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowNewChatModal(false)}>
+          <div className="bg-[#1a1a1a] rounded-2xl border border-white/10 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="border-b border-white/10 px-6 py-4">
+              <h3 className="text-lg font-semibold text-white">Start New Chat</h3>
+              <p className="text-sm text-white/50 mt-1">Select a persona to chat with</p>
+            </div>
+            <div className="p-4 max-h-[60vh] overflow-y-auto">
+              {recentPersonas.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-xs text-white/40 uppercase font-medium px-2 mb-3">Recent Personas</p>
+                  {recentPersonas.map((persona) => (
+                    <button
+                      key={persona}
+                      onClick={() => {
+                        const currentPath = window.location.pathname;
+                        setShowNewChatModal(false);
+                        onClose();
+                        
+                        if (currentPath === '/') {
+                          // On homepage, open chat modal
+                          window.dispatchEvent(new CustomEvent('openChatModal', { detail: persona }));
+                        } else {
+                          // On chat page, navigate to new chat
+                          window.location.href = `/chat?persona=${encodeURIComponent(persona)}`;
+                        }
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all text-left"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold">
+                        {persona.charAt(0)}
+                      </div>
+                      <span className="text-white font-medium">{persona}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <MessageCircle size={40} className="text-white/20 mx-auto mb-3" />
+                  <p className="text-white/50 text-sm">No recent chats</p>
+                  <p className="text-white/30 text-xs mt-1">Go to home to select a persona</p>
+                </div>
+              )}
+            </div>
+            <div className="border-t border-white/10 px-6 py-4">
+              <button
+                onClick={() => {
+                  setShowNewChatModal(false);
+                  onClose();
+                  navigate('/');
+                }}
+                className="w-full px-4 py-2.5 bg-white/5 hover:bg-white/10 rounded-xl text-white text-sm font-medium transition-all"
+              >
+                Browse All Personas
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

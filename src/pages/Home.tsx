@@ -6,6 +6,8 @@ import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import EncryptionKeyPrompt from '../components/EncryptionKeyPrompt';
 import KeyManagement from '../components/KeyManagement';
+import { PersonaCreatorModal } from '../components/PersonaCreatorModal';
+import { ChatModal } from '../components/ChatModal';
 
 interface Persona {
   name: string;
@@ -26,6 +28,8 @@ const Home = () => {
   const [error, setError] = useState('');
   const [showKeyManagement, setShowKeyManagement] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showPersonaCreator, setShowPersonaCreator] = useState(false);
+  const [selectedPersona, setSelectedPersona] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPersonas();
@@ -34,6 +38,16 @@ const Home = () => {
   useEffect(() => {
     filterPersonas();
   }, [searchQuery, selectedCategory, personas]);
+
+  useEffect(() => {
+    // Listen for custom event from Sidebar's New Chat modal
+    const handleOpenChat = (e: any) => {
+      setSelectedPersona(e.detail);
+    };
+    
+    window.addEventListener('openChatModal', handleOpenChat);
+    return () => window.removeEventListener('openChatModal', handleOpenChat);
+  }, []);
 
   const fetchPersonas = async () => {
     try {
@@ -69,7 +83,7 @@ const Home = () => {
   };
 
   const handlePersonaClick = (personaName: string) => {
-    navigate(`/chat?persona=${personaName}`);
+    setSelectedPersona(personaName);
   };
 
   if (loading) {
@@ -324,7 +338,30 @@ const Home = () => {
             )}
           </div>
         </div>
+
+        {/* Floating Create Persona Button */}
+        <button
+          onClick={() => setShowPersonaCreator(true)}
+          className="fixed bottom-6 right-6 p-4 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-full shadow-2xl transition-all hover:scale-110 z-50 flex items-center gap-2 group"
+          title="Create Persona"
+        >
+          <Sparkles size={24} className="text-white" />
+          <span className="text-white font-medium pr-1 max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 whitespace-nowrap">
+            Create Persona
+          </span>
+        </button>
       </div>
+
+      {/* Persona Creator Modal */}
+      {showPersonaCreator && <PersonaCreatorModal onClose={() => setShowPersonaCreator(false)} />}
+
+      {/* Chat Modal */}
+      {selectedPersona && (
+        <ChatModal 
+          personaName={selectedPersona} 
+          onClose={() => setSelectedPersona(null)} 
+        />
+      )}
 
       {/* Encryption Key Prompt for New Devices */}
       {user && <EncryptionKeyPrompt userId={user.uid} />}
