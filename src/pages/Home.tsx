@@ -82,7 +82,7 @@ const Home = () => {
             <div className="w-20 h-20 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin mb-6"></div>
             <div className="absolute inset-0 w-20 h-20 border-4 border-pink-500/20 border-b-pink-500 rounded-full animate-spin" style={{animationDirection: 'reverse', animationDuration: '1.5s'}}></div>
           </div>
-          <p className="text-white/90 text-lg font-medium">Loading personas...</p>
+          <p className="text-white/90 text-lg font-medium">Preparing your experience...</p>
         </div>
       </div>
     );
