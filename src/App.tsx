@@ -7,6 +7,7 @@ import Profile from './pages/Profile';
 import { SharedChatView } from './pages/SharedChatView';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
+import { ProtectedRoute } from './components/ProtectedRoute';
 
 function App() {
   return (
@@ -14,11 +15,11 @@ function App() {
       <AuthProvider>
         <Router>
           <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/chat" element={<ChatEnhanced />} />
+            <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+            <Route path="/chat" element={<ProtectedRoute><ChatEnhanced /></ProtectedRoute>} />
             <Route path="/login" element={<Login />} />
-            <Route path="/history" element={<ChatHistory />} />
-            <Route path="/profile" element={<Profile />} />
+            <Route path="/history" element={<ProtectedRoute><ChatHistory /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/shared/:shareId" element={<SharedChatView />} />
           </Routes>
         </Router>

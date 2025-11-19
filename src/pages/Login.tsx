@@ -185,16 +185,6 @@ const Login = () => {
               {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
             </button>
           </div>
-
-          {/* Guest Access */}
-          <div className="mt-4 text-center">
-            <button
-              onClick={() => navigate('/')}
-              className="text-gray-400 hover:text-gray-300 text-sm"
-            >
-              Continue as guest →
-            </button>
-          </div>
         </div>
 
         {/* Footer */}
