@@ -177,10 +177,25 @@ const Chat = () => {
       const conversation = await getUserConversations(user.uid);
       const current = conversation.find(c => c.id === conversationId);
       if (current) {
-        setMessages(current.messages.map((msg: any) => ({
-          ...msg,
-          timestamp: msg.timestamp?.toDate() || new Date()
-        })));
+        setMessages(current.messages.map((msg: any) => {
+          // Handle both Firestore timestamps and MySQL datetime strings
+          let timestamp: Date;
+          if (msg.timestamp?.toDate) {
+            // Firestore timestamp
+            timestamp = msg.timestamp.toDate();
+          } else if (typeof msg.timestamp === 'string' || msg.timestamp instanceof String) {
+            // MySQL datetime string
+            timestamp = new Date(msg.timestamp);
+          } else {
+            // Fallback
+            timestamp = new Date();
+          }
+          
+          return {
+            ...msg,
+            timestamp
+          };
+        }));
         setCurrentConversationId(current.id || null);
         setConversationTitle(current.title || '');
         setExistingShareId((current as any).shareId || '');

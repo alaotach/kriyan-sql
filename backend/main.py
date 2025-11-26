@@ -1,5 +1,7 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Dict, Optional
 import os
@@ -11,8 +13,29 @@ from g4f.client import Client
 import secrets
 from datetime import datetime, timedelta
 import re
+from contextlib import asynccontextmanager
+
+# Import database utilities
+from utilities.db_utils import (
+    init_db_pool, close_db_pool,
+    create_user, get_user, update_user,
+    create_conversation, get_conversation, get_user_conversations, 
+    update_conversation, delete_conversation,
+    add_message, get_conversation_messages, delete_conversation_messages,
+    create_memory, get_user_memories, update_memory, delete_memory,
+    get_user_settings, update_user_settings
+)
 
 load_dotenv()
+
+# Lifespan context manager for startup/shutdown
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    await init_db_pool()
+    yield
+    # Shutdown
+    await close_db_pool()
 
 # AI Provider Configuration
 USE_HACKCLUB = os.getenv('USE_HACKCLUB', 'false').lower() == 'true'
@@ -24,24 +47,44 @@ g4f_client = Client()
 
 print(f"🤖 AI Provider: {'HackClub' if USE_HACKCLUB and HACKCLUB_API_KEY else 'g4f (free)'}")
 
-app = FastAPI(title="Kriyan Uncensored AI API")
+app = FastAPI(title="Kriyan Uncensored AI API", lifespan=lifespan)
+
+# Validation error handler
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    print(f"❌ Validation error for {request.method} {request.url.path}")
+    print(f"   Errors: {exc.errors()}")
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors()}
+    )
 
 # CORS - Allow frontend to access backend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
+        "http://localhost:5174",
         "http://localhost:3000",
-        "https://*.vercel.app",  # For production
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # ============ MODELS CONFIGURATION ============
 # Using g4f (GPT4Free) - 100% FREE, no API keys needed!
 AVAILABLE_MODELS = {
+    "qwen/qwen3-32b": {
+        "name": "Qwen 3 32B (HackClub)",
+        "provider": "hackclub",
+        "model_id": "qwen/qwen3-32b",
+        "uncensored": True,
+        "description": "Powerful HackClub model, completely free"
+    },
     "command-r24": {
         "name": "GPT-4 (Free via g4f)",
         "provider": "g4f",
@@ -79,7 +122,7 @@ AVAILABLE_MODELS = {
     }
 }
 
-DEFAULT_MODEL = "evil"
+DEFAULT_MODEL = "qwen/qwen3-32b"
 
 # ============ PERSONA SYSTEM ============
 INSTRUCTIONS_DIR = "instructions"
@@ -975,6 +1018,272 @@ Existing memories (don't repeat these):
     except Exception as e:
         print(f"Memory extraction error: {e}")
         raise HTTPException(status_code=500, detail=f"Memory extraction failed: {str(e)}")
+
+# ============ USER MANAGEMENT API ============
+
+class UserProfileRequest(BaseModel):
+    uid: str
+    email: str
+    displayName: str
+    photoURL: Optional[str] = None
+
+class UserProfileUpdateRequest(BaseModel):
+    displayName: Optional[str] = None
+    photoURL: Optional[str] = None
+    subscription: Optional[str] = None
+
+@app.post("/user/create")
+async def create_user_profile(request: UserProfileRequest):
+    """Create or update user profile"""
+    try:
+        await create_user(
+            user_id=request.uid,
+            email=request.email,
+            display_name=request.displayName,
+            photo_url=request.photoURL
+        )
+        return {"success": True, "message": "User profile created"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create user: {str(e)}")
+
+@app.get("/user/{user_id}")
+async def get_user_profile(user_id: str):
+    """Get user profile"""
+    try:
+        user = await get_user(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return user
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get user: {str(e)}")
+
+@app.put("/user/{user_id}")
+async def update_user_profile(user_id: str, request: UserProfileUpdateRequest):
+    """Update user profile"""
+    try:
+        updates = {}
+        if request.displayName is not None:
+            updates['display_name'] = request.displayName
+        if request.photoURL is not None:
+            updates['photo_url'] = request.photoURL
+        if request.subscription is not None:
+            updates['subscription'] = request.subscription
+        
+        if updates:
+            await update_user(user_id, updates)
+        
+        return {"success": True, "message": "User profile updated"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update user: {str(e)}")
+
+# ============ CONVERSATION MANAGEMENT API ============
+
+class ConversationCreateRequest(BaseModel):
+    userId: str
+    personaName: str
+    title: str
+    model: str = "qwen/qwen3-32b"  # Default model
+    encrypted: Optional[bool] = False
+
+class ConversationUpdateRequest(BaseModel):
+    title: Optional[str] = None
+    isPinned: Optional[bool] = None
+
+class MessageRequest(BaseModel):
+    conversationId: str
+    role: str
+    content: str
+    encrypted: Optional[bool] = False
+
+@app.post("/conversation/create")
+async def create_new_conversation(request: ConversationCreateRequest):
+    """Create a new conversation"""
+    try:
+        print(f"📝 Creating conversation: userId={request.userId}, persona={request.personaName}, model={request.model}")
+        conversation_id = await create_conversation(
+            user_id=request.userId,
+            persona_name=request.personaName,
+            title=request.title,
+            model=request.model,
+            encrypted=request.encrypted or False
+        )
+        print(f"✅ Conversation created: {conversation_id}")
+        return {"success": True, "conversationId": conversation_id}
+    except Exception as e:
+        print(f"❌ Failed to create conversation: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to create conversation: {str(e)}")
+
+@app.get("/conversation/{conversation_id}")
+async def get_conversation_detail(conversation_id: str):
+    """Get conversation with messages"""
+    try:
+        conversation = await get_conversation(conversation_id)
+        if not conversation:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        
+        messages = await get_conversation_messages(conversation_id)
+        
+        return {
+            **conversation,
+            "messages": messages
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get conversation: {str(e)}")
+
+@app.get("/conversations/{user_id}")
+async def get_user_conversation_list(user_id: str):
+    """Get all conversations for a user"""
+    try:
+        conversations = await get_user_conversations(user_id)
+        
+        # Get message counts for each conversation
+        for conv in conversations:
+            messages = await get_conversation_messages(conv['id'])
+            conv['messageCount'] = len(messages)
+            # Get last message preview
+            if messages:
+                conv['lastMessage'] = messages[-1]['content'][:100]
+        
+        return conversations
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get conversations: {str(e)}")
+
+@app.put("/conversation/{conversation_id}")
+async def update_conversation_detail(conversation_id: str, request: ConversationUpdateRequest):
+    """Update conversation"""
+    try:
+        updates = {}
+        if request.title is not None:
+            updates['title'] = request.title
+        if request.isPinned is not None:
+            updates['is_pinned'] = request.isPinned
+        
+        if updates:
+            await update_conversation(conversation_id, updates)
+        
+        return {"success": True, "message": "Conversation updated"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update conversation: {str(e)}")
+
+@app.delete("/conversation/{conversation_id}")
+async def delete_conversation_endpoint(conversation_id: str):
+    """Delete a conversation"""
+    try:
+        await delete_conversation(conversation_id)
+        return {"success": True, "message": "Conversation deleted"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete conversation: {str(e)}")
+
+@app.post("/conversation/message")
+async def add_conversation_message(request: MessageRequest):
+    """Add a message to a conversation"""
+    try:
+        message_id = await add_message(
+            conversation_id=request.conversationId,
+            role=request.role,
+            content=request.content,
+            encrypted=request.encrypted or False
+        )
+        return {"success": True, "messageId": message_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to add message: {str(e)}")
+
+@app.get("/conversation/{conversation_id}/messages")
+async def get_conversation_message_list(conversation_id: str):
+    """Get all messages for a conversation"""
+    try:
+        messages = await get_conversation_messages(conversation_id)
+        return messages
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get messages: {str(e)}")
+
+# ============ MEMORY MANAGEMENT API ============
+
+class MemoryCreateRequest(BaseModel):
+    userId: str
+    content: str
+    category: Optional[str] = 'general'
+
+class MemoryUpdateRequest(BaseModel):
+    content: str
+
+@app.post("/memory/create")
+async def create_user_memory(request: MemoryCreateRequest):
+    """Create a new memory"""
+    try:
+        memory_id = await create_memory(
+            user_id=request.userId,
+            content=request.content,
+            category=request.category or 'general'
+        )
+        return {"success": True, "memoryId": memory_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create memory: {str(e)}")
+
+@app.get("/memories/{user_id}")
+async def get_memories_list(user_id: str):
+    """Get all memories for a user"""
+    try:
+        memories = await get_user_memories(user_id)
+        return memories
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get memories: {str(e)}")
+
+@app.put("/memory/{memory_id}")
+async def update_user_memory(memory_id: str, request: MemoryUpdateRequest):
+    """Update a memory"""
+    try:
+        await update_memory(memory_id, request.content)
+        return {"success": True, "message": "Memory updated"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update memory: {str(e)}")
+
+@app.delete("/memory/{memory_id}")
+async def delete_user_memory(memory_id: str):
+    """Delete a memory"""
+    try:
+        await delete_memory(memory_id)
+        return {"success": True, "message": "Memory deleted"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete memory: {str(e)}")
+
+# ============ SETTINGS MANAGEMENT API ============
+
+class SettingsUpdateRequest(BaseModel):
+    memoryEnabled: Optional[bool] = None
+    theme: Optional[str] = None
+
+@app.get("/settings/{user_id}")
+async def get_settings(user_id: str):
+    """Get user settings"""
+    try:
+        settings = await get_user_settings(user_id)
+        return settings
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get settings: {str(e)}")
+
+@app.put("/settings/{user_id}")
+async def update_settings(user_id: str, request: SettingsUpdateRequest):
+    """Update user settings"""
+    try:
+        updates = {}
+        if request.memoryEnabled is not None:
+            updates['memory_enabled'] = request.memoryEnabled
+        if request.theme is not None:
+            updates['theme'] = request.theme
+        
+        if updates:
+            await update_user_settings(user_id, updates)
+        
+        return {"success": True, "message": "Settings updated"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update settings: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

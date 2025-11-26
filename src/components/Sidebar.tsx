@@ -426,20 +426,20 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
                     </div>
                   </div>
                   <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100">
-                    <button
+                    <div
                       onClick={(e) => conv.id && togglePinChat(conv.id, e)}
-                      className="p-2 hover:bg-yellow-500/20 rounded-lg transition-all"
+                      className="p-2 hover:bg-yellow-500/20 rounded-lg transition-all cursor-pointer"
                       title="Unpin"
                     >
                       <Pin size={14} className="text-yellow-400 fill-yellow-400" />
-                    </button>
-                    <button
+                    </div>
+                    <div
                       onClick={(e) => conv.id && handleDeleteConversation(conv.id, e)}
-                      className="p-2 hover:bg-red-500/20 rounded-lg transition-all"
+                      className="p-2 hover:bg-red-500/20 rounded-lg transition-all cursor-pointer"
                       title="Delete conversation"
                     >
                       <Trash2 size={14} className="text-red-400" />
-                    </button>
+                    </div>
                   </div>
                 </button>
               ))}
@@ -480,20 +480,20 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
                     </div>
                   </div>
                   <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100">
-                    <button
+                    <div
                       onClick={(e) => conv.id && togglePinChat(conv.id, e)}
-                      className="p-2 hover:bg-yellow-500/20 rounded-lg transition-all"
+                      className="p-2 hover:bg-yellow-500/20 rounded-lg transition-all cursor-pointer"
                       title="Pin"
                     >
                       <Pin size={14} className="text-white/40" />
-                    </button>
-                    <button
+                    </div>
+                    <div
                       onClick={(e) => conv.id && handleDeleteConversation(conv.id, e)}
-                      className="p-2 hover:bg-red-500/20 rounded-lg transition-all"
+                      className="p-2 hover:bg-red-500/20 rounded-lg transition-all cursor-pointer"
                       title="Delete conversation"
                     >
                       <Trash2 size={14} className="text-red-400" />
-                    </button>
+                    </div>
                   </div>
                 </button>
               ))}

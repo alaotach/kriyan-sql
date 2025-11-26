@@ -51,8 +51,30 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setUser(user);
       
       if (user) {
-        // Load user profile from Firestore
-        const profile = await getUserProfile(user.uid);
+        // Load user profile from backend API (MySQL)
+        let profile = await getUserProfile(user.uid);
+        
+        // If user doesn't exist in MySQL, create them
+        if (!profile) {
+          try {
+            const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+            await fetch(`${API_BASE_URL}/user/create`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                uid: user.uid,
+                email: user.email,
+                displayName: user.displayName || 'User',
+                photoURL: user.photoURL
+              })
+            });
+            // Fetch the newly created profile
+            profile = await getUserProfile(user.uid);
+          } catch (error) {
+            console.error('Failed to create user profile:', error);
+          }
+        }
+        
         setUserProfile(profile);
         
         // ============ AUTOMATIC KEY SYNC ============

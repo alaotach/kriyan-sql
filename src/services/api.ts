@@ -248,4 +248,142 @@ export const api = {
     }
     return response.json();
   },
+
+  // ============ USER MANAGEMENT ============
+  async createUser(uid: string, email: string, displayName: string, photoURL?: string): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${API_BASE_URL}/user/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uid, email, displayName, photoURL })
+    });
+    if (!response.ok) throw new Error(`Failed to create user: ${response.status}`);
+    return response.json();
+  },
+
+  async getUserProfile(userId: string): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/user/${userId}`);
+    if (!response.ok) throw new Error(`Failed to get user profile: ${response.status}`);
+    return response.json();
+  },
+
+  async updateUserProfile(userId: string, updates: { displayName?: string; photoURL?: string; subscription?: string }): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${API_BASE_URL}/user/${userId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    });
+    if (!response.ok) throw new Error(`Failed to update user profile: ${response.status}`);
+    return response.json();
+  },
+
+  // ============ CONVERSATION MANAGEMENT ============
+  async createConversation(userId: string, personaName: string, title: string, model: string, encrypted: boolean = false): Promise<{ success: boolean; conversationId: string }> {
+    const response = await fetch(`${API_BASE_URL}/conversation/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, personaName, title, model, encrypted })
+    });
+    if (!response.ok) throw new Error(`Failed to create conversation: ${response.status}`);
+    return response.json();
+  },
+
+  async getConversation(conversationId: string): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/conversation/${conversationId}`);
+    if (!response.ok) throw new Error(`Failed to get conversation: ${response.status}`);
+    return response.json();
+  },
+
+  async getUserConversations(userId: string): Promise<any[]> {
+    const response = await fetch(`${API_BASE_URL}/conversations/${userId}`);
+    if (!response.ok) throw new Error(`Failed to get conversations: ${response.status}`);
+    return response.json();
+  },
+
+  async updateConversationDetails(conversationId: string, updates: { title?: string; isPinned?: boolean }): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${API_BASE_URL}/conversation/${conversationId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    });
+    if (!response.ok) throw new Error(`Failed to update conversation: ${response.status}`);
+    return response.json();
+  },
+
+  async deleteConversation(conversationId: string): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${API_BASE_URL}/conversation/${conversationId}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error(`Failed to delete conversation: ${response.status}`);
+    return response.json();
+  },
+
+  async addMessage(conversationId: string, role: string, content: string, encrypted: boolean = false): Promise<{ success: boolean; messageId: string }> {
+    const response = await fetch(`${API_BASE_URL}/conversation/message`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ conversationId, role, content, encrypted })
+    });
+    if (!response.ok) throw new Error(`Failed to add message: ${response.status}`);
+    return response.json();
+  },
+
+  async getConversationMessages(conversationId: string): Promise<any[]> {
+    const response = await fetch(`${API_BASE_URL}/conversation/${conversationId}/messages`);
+    if (!response.ok) throw new Error(`Failed to get messages: ${response.status}`);
+    return response.json();
+  },
+
+  // ============ MEMORY MANAGEMENT ============
+  async createMemory(userId: string, content: string, category: string = 'general'): Promise<{ success: boolean; memoryId: string }> {
+    const response = await fetch(`${API_BASE_URL}/memory/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, content, category })
+    });
+    if (!response.ok) throw new Error(`Failed to create memory: ${response.status}`);
+    return response.json();
+  },
+
+  async getUserMemoriesList(userId: string): Promise<any[]> {
+    const response = await fetch(`${API_BASE_URL}/memories/${userId}`);
+    if (!response.ok) throw new Error(`Failed to get memories: ${response.status}`);
+    return response.json();
+  },
+
+  async updateMemory(memoryId: string, content: string): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${API_BASE_URL}/memory/${memoryId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content })
+    });
+    if (!response.ok) throw new Error(`Failed to update memory: ${response.status}`);
+    return response.json();
+  },
+
+  async deleteMemory(memoryId: string): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${API_BASE_URL}/memory/${memoryId}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error(`Failed to delete memory: ${response.status}`);
+    return response.json();
+  },
+
+  // ============ SETTINGS MANAGEMENT ============
+  async getUserSettings(userId: string): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/settings/${userId}`);
+    if (!response.ok) throw new Error(`Failed to get settings: ${response.status}`);
+    return response.json();
+  },
+
+  async updateUserSettings(userId: string, settings: { memoryEnabled?: boolean; theme?: string }): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${API_BASE_URL}/settings/${userId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings)
+    });
+    if (!response.ok) throw new Error(`Failed to update settings: ${response.status}`);
+    return response.json();
+  },
 };
+
+

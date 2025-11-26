@@ -4,3 +4,7 @@ httpx==0.25.2
 python-dotenv==1.0.0
 pydantic==2.5.2
 g4f[all]
+aiomysql==0.2.0
+PyMySQL==1.1.0
+cryptography==41.0.7
+pytz==2023.3
